@@ -2,18 +2,20 @@ package main
 
 import (
 	"crypto/md5"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"math/rand"
 	"time"
 )
 
 type containerOptions struct {
-	name string
+	image    v1.Image
+	name     string
 	hostname string
-	mem  int
-	swap int
-	pid  int
-	cpus float64
-	detach bool
+	mem      int
+	swap     int
+	pid      int
+	cpus     float64
+	detach   bool
 }
 
 func (opt *containerOptions) setRandomName() {
