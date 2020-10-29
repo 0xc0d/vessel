@@ -1,4 +1,4 @@
-module vessel
+module github.com/0xc0d/vessel
 
 go 1.15
 
