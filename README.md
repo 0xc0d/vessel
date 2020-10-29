@@ -1,2 +1,2 @@
-#OpenVessel
-A tiny tool for managing containers written in Go.
+# OpenVessel
+A tiny tool for managing OCI containers written in Go.
