@@ -9,8 +9,14 @@ var (
 	ErrRepoNotExist = errors.New("repository does not exist")
 )
 
-func must(err error)  {
+func Must(err error) {
 	if err != nil {
 		log.Fatal(err)
+	}
+}
+
+func CheckErr(err error) {
+	if err != nil {
+		panic(err)
 	}
 }
