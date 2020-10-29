@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// newVesselCommand returns the root cobra.Command for Vessel.
 func newVesselCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:                   "vessel [OPTIONS] COMMAND",
@@ -17,6 +18,7 @@ func newVesselCommand() *cobra.Command {
 	return cmd
 }
 
+// newRunCommand implements and returns the run command.
 func newRunCommand() *cobra.Command {
 	ops := new(containerOptions)
 
@@ -46,9 +48,8 @@ func newRunCommand() *cobra.Command {
 	flags.IntVarP(&ops.mem, "memory", "m", 100, "Limit memory access in MB")
 	flags.IntVarP(&ops.swap, "swap", "s", 20, "Limit swap access in MB")
 	flags.Float64VarP(&ops.cpus, "cpus", "c", 2, "Limit CPUs")
-	flags.IntVarP(&ops.pid, "pid", "p", 100, "Limit Processes")
+	flags.IntVarP(&ops.pid, "pids", "p", 100, "Limit number of processes")
 	flags.BoolVarP(&ops.detach, "detach", "d", false, "run command in the background")
 
 	return cmd
 }
-
