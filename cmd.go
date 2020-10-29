@@ -27,24 +27,27 @@ func newRunCommand() *cobra.Command {
 		Short:                 "Run a command inside a new container.",
 		DisableFlagsInUseLine: true,
 		Args:                  cobra.MinimumNArgs(1),
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if args[0] != "ubuntu" {
+		PreRunE: func(cmd *cobra.Command, args []string) (err error) {
+			src := args[0]
+			ops.image, err = newImage(src)
+			if err != nil {
 				cmd.SilenceUsage = true
-				return fmt.Errorf("can't find image %s", args[0])
+				return ErrRepoNotExist
 			}
+
+			// Convert memory and swap limit to megabyte
 			ops.mem *= MB
 			ops.swap *= MB
-			return nil
+			return
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-
-			fmt.Println(ops)
+			fmt.Println(ops.image.Digest())
 		},
 	}
 
 	flags := cmd.Flags()
-	flags.StringVarP(&ops.name, "name", "n", "", "Container name")
-	flags.StringVarP(&ops.hostname, "host", "h", "", "Container Hostname")
+	flags.StringVarP(&ops.name, "name", "", "", "Container name")
+	flags.StringVarP(&ops.hostname, "host", "", "", "Container Hostname")
 	flags.IntVarP(&ops.mem, "memory", "m", 100, "Limit memory access in MB")
 	flags.IntVarP(&ops.swap, "swap", "s", 20, "Limit swap access in MB")
 	flags.Float64VarP(&ops.cpus, "cpus", "c", 2, "Limit CPUs")
