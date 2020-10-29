@@ -6,7 +6,6 @@ const (
 
 func main() {
 	a := newVesselCommand()
-	a.UsageFunc()
 	a.AddCommand(newRunCommand())
-	must(a.Execute())
+	a.Execute()
 }
