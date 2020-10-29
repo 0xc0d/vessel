@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/spf13/cobra"
 )
 
@@ -41,7 +40,18 @@ func newRunCommand() *cobra.Command {
 			return
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println(ops.image.Digest())
+			var (
+				Cmd string
+				Args []string
+			)
+			if len(args) > 1 {
+				Cmd = args[1]
+			}
+			if len(args) > 2 {
+				Args = args[2:]
+			}
+
+			runRun(ops, Cmd, Args...)
 		},
 	}
 
