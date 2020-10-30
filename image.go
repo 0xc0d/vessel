@@ -2,6 +2,7 @@ package main
 
 import (
 	"compress/gzip"
+	"encoding/json"
 	"github.com/google/go-containerregistry/pkg/crane"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"io/ioutil"
@@ -10,27 +11,45 @@ import (
 )
 
 const (
-	TmpPath  = "/home/aggy/var/lib/vessel/tmp"
-	ImgPath  = "/home/aggy/var/lib/vessel/images"
+	TmpDir   = "/home/aggy/var/lib/vessel/tmp"
+	ImgDir   = "/home/aggy/var/lib/vessel/image"
 	tarExt   = ".tar"
 	tarGzExt = ".tar.gz"
+	manifest = "manifest.json"
 )
 
 func init() {
-	Must(os.MkdirAll(TmpPath, 0755))
-	Must(os.MkdirAll(ImgPath, 0755))
+	Must(os.MkdirAll(TmpDir, 0755))
+	Must(os.MkdirAll(ImgDir, 0755))
 }
 
-// newImage returns v1.Image for the given image source
-func newImage(src string) (v1.Image, error) {
-	return crane.Pull(src)
+type Manifest struct {
+	Config string
+}
+
+func getImage(src string) (string, error) {
+	img, err := crane.Pull(src)
+	if err != nil {
+		return "", err
+	}
+	if !imageExists(img) {
+		if err := imageDownload(img); err != nil {
+			return "", err
+		}
+	}
+
+	digest, err := img.Digest()
+	if err != nil {
+		return "", err
+	}
+	return digest.Hex, nil
 }
 
 // imageExists checks for image existence in local storage
 func imageExists(img v1.Image) bool {
 	imageDigest, err := img.Digest()
 	CheckErr(err)
-	files, err := ioutil.ReadDir(ImgPath)
+	files, err := ioutil.ReadDir(ImgDir)
 	CheckErr(err)
 	for _, file := range files {
 		if file.IsDir() && imageDigest.Hex == file.Name() {
@@ -40,18 +59,21 @@ func imageExists(img v1.Image) bool {
 	return false
 }
 
-// imageDownload downloads tar format of image in TmpPath.
-// It then extract the image and copy it into ImgPath
+// imageDownload downloads tar format of image in TmpDir.
+// It then extract the image and copy it into ImgDir
 func imageDownload(img v1.Image) error {
 	imageDigest, err := img.Digest()
 	CheckErr(err)
 
-	err = crane.Save(img, imageDigest.Hex, filepath.Join(TmpPath, imageDigest.Hex)+tarExt)
-	if err != nil {
+	imageTmpPath := filepath.Join(TmpDir, imageDigest.Hex)+tarExt
+	if err := crane.Save(img, imageDigest.Hex, imageTmpPath); err != nil {
+		return err
+	}
+	if err := imageExtract(img); err != nil {
 		return err
 	}
 
-	return imageExtract(img)
+	return imageRemove(img)
 }
 
 // imageExtract extracts the downloaded image
@@ -61,29 +83,40 @@ func imageExtract(img v1.Image) error {
 		return err
 	}
 
-	imageDir := filepath.Join(TmpPath, imageDigest.Hex)
-	defer os.RemoveAll(imageDir)
-	imageFilepath := imageDir + tarExt
-	defer os.RemoveAll(imageFilepath)
+	imageTempDir := filepath.Join(TmpDir, imageDigest.Hex)
+	imageFile := imageTempDir + tarExt
 
-	file, err := os.Open(imageFilepath)
+	file, err := os.Open(imageFile)
 	if err != nil {
 		return err
 	}
 
-	if err := unTar(file, imageDir); err != nil {
+	if err := unTar(file, imageTempDir); err != nil {
 		return err
 	}
 
-	if err := layerExtract(img); err != nil {
+	// Extract image layers
+	if err := imageLayerExtract(img); err != nil {
 		return err
 	}
 
-	return nil
+	// Move manifest.json to ImgDir
+	if err := os.Rename(filepath.Join(imageTempDir, manifest),
+		filepath.Join(ImgDir, imageDigest.Hex, manifest)); err != nil {
+		return err
+	}
+
+	// Move config file to ImgDir
+	newManifest, err := parseImageManifest(imageDigest.Hex)
+	if err != nil {
+		return err
+	}
+	return os.Rename(filepath.Join(imageTempDir, newManifest.Config),
+		filepath.Join(ImgDir, imageDigest.Hex, newManifest.Config))
 }
 
-// layerExtract tar Gzip layer files in image
-func layerExtract(img v1.Image) error {
+// imageLayerExtract tar Gzip layer files in image
+func imageLayerExtract(img v1.Image) error {
 	imageDigest, err := img.Digest()
 	if err != nil {
 		return err
@@ -98,7 +131,7 @@ func layerExtract(img v1.Image) error {
 
 	for _, layer := range manifest.Layers {
 		layer := layer
-		layerFilepath := filepath.Join(TmpPath, imageDigest.Hex, layer.Digest.Hex) + tarGzExt
+		layerFilepath := filepath.Join(TmpDir, imageDigest.Hex, layer.Digest.Hex) + tarGzExt
 		file, err := os.Open(layerFilepath)
 		if err != nil {
 			return err
@@ -106,7 +139,7 @@ func layerExtract(img v1.Image) error {
 		reader, err := gzip.NewReader(file)
 		go func() {
 			defer file.Close()
-			ch <- unTar(reader, filepath.Join(ImgPath, imageDigest.Hex, layer.Digest.Hex))
+			ch <- unTar(reader, filepath.Join(ImgDir, imageDigest.Hex, layer.Digest.Hex))
 		}()
 	}
 
@@ -118,4 +151,49 @@ func layerExtract(img v1.Image) error {
 	}
 
 	return nil
+}
+
+func imageRemove(img v1.Image) error {
+	imageDigest, err := img.Digest()
+	if err != nil {
+		return err
+	}
+
+	imageTempDir := filepath.Join(TmpDir, imageDigest.Hex)
+	imageFile := imageTempDir + tarExt
+	if err := os.RemoveAll(imageTempDir); err != nil {
+		return err
+	}
+	return  os.RemoveAll(imageFile)
+}
+
+// parseImageManifest parses manifest.json file of an image
+func parseImageManifest(src string) (Manifest, error) {
+	manifestFile, err := ioutil.ReadFile(filepath.Join(ImgDir, src, manifest))
+	if err != nil {
+		return Manifest{}, err
+	}
+
+	var ml []Manifest
+	err = json.Unmarshal(manifestFile, &ml)
+	return ml[0], err
+}
+
+// parseImageConfig parses config file of an image
+func parseImageConfig(src string) (v1.Config, error) {
+	var config v1.Config
+	manifest, err := parseImageManifest(src)
+	if err != nil {
+		return config, err
+	}
+	file, err := os.Open(filepath.Join(ImgDir, src, manifest.Config))
+	if err != nil {
+		return config, err
+	}
+
+	configFile, err := v1.ParseConfigFile(file)
+	if err != nil {
+		return config, err
+	}
+	return configFile.Config, err
 }
