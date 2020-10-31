@@ -49,6 +49,7 @@ func unTar(r io.Reader, dst string) error {
 		case tar.TypeLink:
 			link := filepath.Join(dst, header.Name)
 			linkTarget := filepath.Join(dst, header.Linkname)
+			// lazy link creation. just to make sure all files are available
 			defer os.Link(link, linkTarget)
 		case tar.TypeSymlink:
 			linkPath := filepath.Join(dst, header.Name)

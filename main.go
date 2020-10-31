@@ -6,6 +6,6 @@ const (
 
 func main() {
 	a := newVesselCommand()
-	a.AddCommand(newRunCommand())
+	a.AddCommand(newRunCommand(), newForkCommand())
 	a.Execute()
 }
