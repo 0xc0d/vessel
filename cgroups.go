@@ -16,7 +16,7 @@ const (
 )
 
 const (
-	cgroupPath           = "/home/aggy/sys/fs/cgroup"
+	cgroupPath           = "/sys/fs/cgroup"
 	vessel               = "vessel"
 	releaseAgentFilename = "notify_on_release"
 	procsFilename        = "cgroup.procs"
@@ -41,7 +41,11 @@ type cgroup struct {
 	pids      []byte
 }
 
-type remover func() error
+var controller = []string{
+	"memory",
+	"cpu",
+	"pids",
+}
 
 func newCGroup(ctr *container) *cgroup {
 	if int(ctr.cpus) > runtime.NumCPU() {
@@ -59,7 +63,7 @@ func newCGroup(ctr *container) *cgroup {
 
 	memsw := ctr.mem + ctr.swap
 	cg := &cgroup{
-		ctrid:     ctr.image,
+		ctrid:     ctr.digest,
 		mem:       []byte(strconv.Itoa(ctr.mem)),
 		memsw:     []byte(strconv.Itoa(memsw)),
 		cfsPeriod: []byte(strconv.Itoa(defaultCfsPeriod)),
@@ -70,53 +74,50 @@ func newCGroup(ctr *container) *cgroup {
 	return cg
 }
 
-func (cg *cgroup) Load() (remover, error) {
-	controller := []string{"memory", "cpu", "pids"}
-
-	// remover function
-	remover := func() error {
-		for _, c := range controller {
-			dir := filepath.Join(cgroupPath, c, vessel, cg.ctrid)
-			if err := os.RemoveAll(dir); err != nil {
-				return err
-			}
-		}
-		return nil
+func (cg *cgroup) Load() error {
+	if err := cg.createControllersDir(); err != nil {
+		return err
 	}
-
-	if err := cg.createControllersDir(controller); err != nil {
-		return remover, err
+	if err := cg.enableReleaseAgent(); err != nil {
+		return err
 	}
-	if err := cg.enableReleaseAgent(controller); err != nil {
-		return remover, err
-	}
-	if err := cg.moveProcess(controller, os.Getpid()); err != nil {
-		return remover, err
+	if err := cg.moveProcess(os.Getpid()); err != nil {
+		return err
 	}
 	if err := cg.setMemSwLimit(); err != nil {
-		return remover, err
+		return err
 	}
 	if err := cg.setCPULimit(); err != nil {
-		return remover, err
+		return err
 	}
 	if err := cg.setProcessLimit(); err != nil {
-		return remover, err
+		return err
 	}
 
-	return remover, nil
+	return nil
 }
 
-func (cg *cgroup) createControllersDir(controller []string) error {
+func (cg *cgroup) Remove() error {
 	for _, c := range controller {
 		dir := filepath.Join(cgroupPath, c, vessel, cg.ctrid)
-		if err := os.MkdirAll(dir, 0644); err != nil {
+		if err := os.RemoveAll(dir); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (cg *cgroup) enableReleaseAgent(controller []string) error {
+func (cg *cgroup) createControllersDir() error {
+	for _, c := range controller {
+		dir := filepath.Join(cgroupPath, c, vessel, cg.ctrid)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (cg *cgroup) enableReleaseAgent() error {
 	for _, c := range controller {
 		file := filepath.Join(cgroupPath, c, vessel, cg.ctrid, releaseAgentFilename)
 		if err := ioutil.WriteFile(file, []byte{'1'}, 0700); err != nil {
@@ -126,10 +127,10 @@ func (cg *cgroup) enableReleaseAgent(controller []string) error {
 	return nil
 }
 
-func (cg *cgroup) moveProcess(controller []string, pid int) error {
+func (cg *cgroup) moveProcess(pid int) error {
 	for _, c := range controller {
 		file := filepath.Join(cgroupPath, c, vessel, cg.ctrid, procsFilename)
-		if err := ioutil.WriteFile(file, []byte(strconv.Itoa(pid)), 0700); err != nil {
+		if err := ioutil.WriteFile(file, []byte(strconv.Itoa(pid)), 0644); err != nil {
 			return err
 		}
 	}
