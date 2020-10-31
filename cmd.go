@@ -30,15 +30,6 @@ func newRunCommand() *cobra.Command {
 		Run: runRun,
 	}
 
-	flags := cmd.Flags()
-	flags.StringP("name", "", "", "Container name")
-	flags.StringP("host", "", "", "Container Hostname")
-	flags.IntP("memory", "m", 100, "Limit memory access in MB")
-	flags.IntP("swap", "s", 20, "Limit swap access in MB")
-	flags.Float64P("cpus", "c", 2, "Limit CPUs")
-	flags.IntP("pids", "p", 100, "Limit number of processes")
-	flags.BoolP("detach", "d", false, "run command in the background")
-
 	return cmd
 }
 
@@ -46,24 +37,25 @@ func newForkCommand() *cobra.Command {
 	ctr := new(container)
 	cmd := &cobra.Command{
 		Use:    "fork",
-		//Hidden: true,
+		Hidden: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Convert memory and swap limit to megabyte
 			ctr.mem *= MB
 			ctr.swap *= MB
-			runFork(ctr, args[0], args)
+			runFork(ctr, args)
 		},
 	}
 
 	flags := cmd.Flags()
-	flags.StringVar(&ctr.image, "image", "", "Container name")
-	flags.StringVarP(&ctr.name, "name", "", "", "Container name")
-	flags.StringVarP(&ctr.hostname, "host", "", "", "Container Hostname")
-	flags.IntVarP(&ctr.mem, "memory", "m", 100, "Limit memory access in MB")
-	flags.IntVarP(&ctr.swap, "swap", "s", 20, "Limit swap access in MB")
-	flags.Float64VarP(&ctr.cpus, "cpus", "c", 2, "Limit CPUs")
-	flags.IntVarP(&ctr.pids, "pids", "p", 128, "Limit number of processes")
-	flags.BoolVarP(&ctr.detach, "detach", "d", false, "run command in the background")
+	flags.StringVar(&ctr.digest, "container", "", "")
+	flags.StringSliceVar(&ctr.env, "environments", []string{}, "")
+	flags.StringVar(&ctr.name, "name", "", "")
+	flags.StringVar(&ctr.hostname, "host", "", "")
+	flags.IntVar(&ctr.mem, "memory", 100, "")
+	flags.IntVar(&ctr.swap, "swap", 20, "")
+	flags.Float64Var(&ctr.cpus, "cpus", 2, "")
+	flags.IntVar(&ctr.pids, "pids", 128, "")
+	flags.BoolVar(&ctr.detach, "detach", false, "")
 
 	return cmd
 }
