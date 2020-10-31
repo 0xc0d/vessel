@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	TmpDir   = "/home/aggy/var/lib/vessel/tmp"
-	ImgDir   = "/home/aggy/var/lib/vessel/image"
+	TmpDir   = "/home/aggy/var/lib/vessel/temp"
+	ImgDir   = "/home/aggy/var/lib/vessel/images"
 	tarExt   = ".tar"
 	tarGzExt = ".tar.gz"
 	manifest = "manifest.json"
@@ -25,24 +25,21 @@ func init() {
 
 type Manifest struct {
 	Config string
+	Layers []string
 }
 
-func getImage(src string) (string, error) {
+func getImage(src string) (v1.Image, error) {
 	img, err := crane.Pull(src)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if !imageExists(img) {
 		if err := imageDownload(img); err != nil {
-			return "", err
+			return nil, err
 		}
 	}
 
-	digest, err := img.Digest()
-	if err != nil {
-		return "", err
-	}
-	return digest.Hex, nil
+	return img, nil
 }
 
 // imageExists checks for image existence in local storage
@@ -165,6 +162,25 @@ func imageRemove(img v1.Image) error {
 		return err
 	}
 	return  os.RemoveAll(imageFile)
+}
+
+
+func getImageLayers(img v1.Image) ([]string, error) {
+	var layers []string
+	imageDigest, err := img.Digest()
+	if err != nil {
+		return layers, err
+	}
+	imgManifest, err := img.Manifest()
+	if err != nil {
+		return nil, err
+	}
+
+	imagePath := filepath.Join(ImgDir, imageDigest.Hex)
+	for _, layer := range imgManifest.Layers {
+		layers = append(layers, filepath.Join(imagePath, layer.Digest.Hex))
+	}
+	return layers, nil
 }
 
 // parseImageManifest parses manifest.json file of an image
