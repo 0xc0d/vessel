@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -17,23 +18,19 @@ const (
 
 const (
 	cgroupPath           = "/sys/fs/cgroup"
-	vessel               = "vessel"
 	releaseAgentFilename = "notify_on_release"
 	procsFilename        = "cgroup.procs"
 	memoryLimitFilename  = "memory.limit_in_bytes"
 	memswLimitFilename   = "memory.memsw.limit_in_bytes"
 	cpuQuotaFilename     = "cpu.cfs_quota_us"
 	cpuPeriodFilename    = "cpu.cfs_period_us"
-	maxProcessFilename   = "pid.max"
+	maxProcessFilename   = "pids.max"
 
-	defaultCfsPeriod   = 100000
-	defaultMaxProcess  = 1 << 7
-	defaultMemoryLimit = 1 << 7 * MB
-	defaultSwapLimit   = 1 << 5 * MB
+	defaultCfsPeriod = 100000
 )
 
-type cgroup struct {
-	ctrid     string
+type CGroups struct {
+	path      string
 	mem       []byte
 	memsw     []byte
 	cfsPeriod []byte
@@ -41,75 +38,87 @@ type cgroup struct {
 	pids      []byte
 }
 
-var controller = []string{
+var controllers = []string{
 	"memory",
 	"cpu",
 	"pids",
 }
 
-func newCGroup(ctr *container) *cgroup {
-	if int(ctr.cpus) > runtime.NumCPU() {
-		ctr.cpus = -1 // no limit
-	}
-	if ctr.pids < 1 {
-		ctr.pids = defaultMaxProcess
-	}
-	if ctr.mem < 1 {
-		ctr.mem = defaultMemoryLimit
-	}
-	if ctr.swap < 1 {
-		ctr.swap = defaultSwapLimit
-	}
+func newCGroup() *CGroups {
+	return new(CGroups)
+}
 
-	memsw := ctr.mem + ctr.swap
-	cg := &cgroup{
-		ctrid:     ctr.digest,
-		mem:       []byte(strconv.Itoa(ctr.mem)),
-		memsw:     []byte(strconv.Itoa(memsw)),
-		cfsPeriod: []byte(strconv.Itoa(defaultCfsPeriod)),
-		cfsQuota:  []byte(strconv.Itoa(int(defaultCfsPeriod * ctr.cpus))),
-		pids:      []byte(strconv.Itoa(ctr.pids)),
+func (cg *CGroups) setMemorySwapLimit(memory, swap int) *CGroups {
+	if memory > 1 {
+		cg.mem = []byte(strconv.Itoa(memory))
+		if swap > 1 {
+			cg.memsw = []byte(strconv.Itoa(memory + swap))
+		}
 	}
-
 	return cg
 }
 
-func (cg *cgroup) Load() error {
+func (cg *CGroups) setPath(path string) *CGroups {
+	if path != "" {
+		cg.path = path
+	}
+	return cg
+}
+
+func (cg *CGroups) setCPULimit(quota float64) *CGroups {
+	if int(quota) < runtime.NumCPU() && int(quota) > 0 {
+		cg.cfsPeriod = []byte(strconv.Itoa(defaultCfsPeriod))
+		cg.cfsQuota = []byte(strconv.Itoa(int(defaultCfsPeriod * quota)))
+	}
+	return cg
+}
+
+func (cg *CGroups) setProcessLimit(number int) *CGroups {
+	if number > 0 {
+		cg.pids = []byte(strconv.Itoa(number))
+	}
+	return cg
+}
+
+func (cg *CGroups) Load() error {
 	if err := cg.createControllersDir(); err != nil {
 		return err
 	}
 	if err := cg.enableReleaseAgent(); err != nil {
 		return err
 	}
-	if err := cg.moveProcess(os.Getpid()); err != nil {
+	if err := cg.addProcess(os.Getpid()); err != nil {
 		return err
 	}
-	if err := cg.setMemSwLimit(); err != nil {
+	if err := cg.loadMemSwLimit(); err != nil {
 		return err
 	}
-	if err := cg.setCPULimit(); err != nil {
+	if err := cg.loadCPULimit(); err != nil {
 		return err
 	}
-	if err := cg.setProcessLimit(); err != nil {
+	if err := cg.loadProcessLimit(); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (cg *cgroup) Remove() error {
-	for _, c := range controller {
-		dir := filepath.Join(cgroupPath, c, vessel, cg.ctrid)
-		if err := os.RemoveAll(dir); err != nil {
+func (cg *CGroups) Remove() error {
+	if cg.path == "" {
+		return errors.New("empty")
+	}
+	for _, c := range controllers {
+		dir := filepath.Join(cgroupPath, c, cg.path)
+		if err := os.Remove(dir); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (cg *cgroup) createControllersDir() error {
-	for _, c := range controller {
-		dir := filepath.Join(cgroupPath, c, vessel, cg.ctrid)
+func (cg *CGroups) createControllersDir() error {
+	for _, c := range controllers {
+		dir := filepath.Join(cgroupPath, c, cg.path)
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return err
 		}
@@ -117,19 +126,19 @@ func (cg *cgroup) createControllersDir() error {
 	return nil
 }
 
-func (cg *cgroup) enableReleaseAgent() error {
-	for _, c := range controller {
-		file := filepath.Join(cgroupPath, c, vessel, cg.ctrid, releaseAgentFilename)
-		if err := ioutil.WriteFile(file, []byte{'1'}, 0700); err != nil {
+func (cg *CGroups) enableReleaseAgent() error {
+	for _, c := range controllers {
+		file := filepath.Join(cgroupPath, c, cg.path, releaseAgentFilename)
+		if err := ioutil.WriteFile(file, []byte{'1'}, 0644); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (cg *cgroup) moveProcess(pid int) error {
-	for _, c := range controller {
-		file := filepath.Join(cgroupPath, c, vessel, cg.ctrid, procsFilename)
+func (cg *CGroups) addProcess(pid int) error {
+	for _, c := range controllers {
+		file := filepath.Join(cgroupPath, c, cg.path, procsFilename)
 		if err := ioutil.WriteFile(file, []byte(strconv.Itoa(pid)), 0644); err != nil {
 			return err
 		}
@@ -137,25 +146,25 @@ func (cg *cgroup) moveProcess(pid int) error {
 	return nil
 }
 
-func (cg *cgroup) setMemSwLimit() error {
-	memoryLimitFile := filepath.Join(cgroupPath, "memory", vessel, cg.ctrid, memoryLimitFilename)
-	memswLimitFile := filepath.Join(cgroupPath, "memory", vessel, cg.ctrid, memswLimitFilename)
+func (cg *CGroups) loadMemSwLimit() error {
+	memoryLimitFile := filepath.Join(cgroupPath, "memory", cg.path, memoryLimitFilename)
+	memswLimitFile := filepath.Join(cgroupPath, "memory", cg.path, memswLimitFilename)
 	if err := ioutil.WriteFile(memoryLimitFile, cg.mem, 0644); err != nil {
 		return err
 	}
 	return ioutil.WriteFile(memswLimitFile, cg.memsw, 0644)
 }
 
-func (cg *cgroup) setCPULimit() error {
-	cfsPeriodFile := filepath.Join(cgroupPath, "cpu", vessel, cg.ctrid, cpuPeriodFilename)
-	cfsQuotaFile := filepath.Join(cgroupPath, "cpu", vessel, cg.ctrid, cpuQuotaFilename)
+func (cg *CGroups) loadCPULimit() error {
+	cfsPeriodFile := filepath.Join(cgroupPath, "cpu", cg.path, cpuPeriodFilename)
+	cfsQuotaFile := filepath.Join(cgroupPath, "cpu", cg.path, cpuQuotaFilename)
 	if err := ioutil.WriteFile(cfsPeriodFile, cg.cfsPeriod, 0644); err != nil {
 		return err
 	}
 	return ioutil.WriteFile(cfsQuotaFile, cg.cfsQuota, 0644)
 }
 
-func (cg *cgroup) setProcessLimit() error {
-	maxProcessFile := filepath.Join(cgroupPath, "pids", vessel, cg.ctrid, maxProcessFilename)
+func (cg *CGroups) loadProcessLimit() error {
+	maxProcessFile := filepath.Join(cgroupPath, "pids", cg.path, maxProcessFilename)
 	return ioutil.WriteFile(maxProcessFile, cg.pids, 0644)
 }
