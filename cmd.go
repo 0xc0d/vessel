@@ -29,7 +29,7 @@ func newRunCommand() *cobra.Command {
 		SilenceUsage:          true,
 		PreRunE: func(cmd *cobra.Command, args []string) (err error) {
 			if os.Getuid() != 0 { // not root
-				message := fmt.Sprintf("%s should be run as root", args[0])
+				message := fmt.Sprintf("%s should be run as root", cmd.Name())
 				return errorWithMessage(ErrNotPermitted, message)
 			}
 			return nil

@@ -12,7 +12,7 @@ type Err struct {
 }
 
 var (
-	ErrNotPermitted = errors.New("Operation not permitted")
+	ErrNotPermitted = errors.New("operation not permitted")
 )
 
 func (e *Err) Error() string {
