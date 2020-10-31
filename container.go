@@ -50,7 +50,18 @@ func (c *container) setHostname() {
 }
 
 func (c *container) loadCGroups() error {
-	return newCGroup(c).Load()
+	cg := newCGroup()
+	cg.setPath(filepath.Join("vessel", c.digest))
+	cg.setMemorySwapLimit(c.mem, c.swap)
+	cg.setCPULimit(c.cpus)
+	cg.setProcessLimit(c.pids)
+	return cg.Load()
+}
+
+func (c *container) removeCGroups() error {
+	cg := newCGroup()
+	cg.setPath(filepath.Join("vessel", c.digest))
+	return cg.Remove()
 }
 
 func (c *container) mountFromImage(img v1.Image) error {
