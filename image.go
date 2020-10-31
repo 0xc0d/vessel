@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	TmpDir   = "/home/aggy/var/lib/vessel/temp"
-	ImgDir   = "/home/aggy/var/lib/vessel/images"
+	TmpDir   = "/var/lib/vessel/temp"
+	ImgDir   = "/var/lib/vessel/images"
 	tarExt   = ".tar"
 	tarGzExt = ".tar.gz"
 	manifest = "manifest.json"

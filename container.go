@@ -5,7 +5,6 @@ import (
 	"fmt"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"math/rand"
-	"os"
 	"path/filepath"
 	"sync"
 	"syscall"
@@ -26,7 +25,7 @@ type container struct {
 }
 
 const (
-	CtrDir = "/home/aggy/var/lib/vessel/containers"
+	CtrDir = "/var/lib/vessel/containers"
 )
 
 func (c *container) setDigest() {
@@ -51,10 +50,11 @@ func (c *container) setHostname() {
 
 func (c *container) loadCGroups() error {
 	cg := newCGroup()
-	cg.setPath(filepath.Join("vessel", c.digest))
-	cg.setMemorySwapLimit(c.mem, c.swap)
-	cg.setCPULimit(c.cpus)
-	cg.setProcessLimit(c.pids)
+	cg.setPath(filepath.Join("vessel", c.digest)).
+		setMemorySwapLimit(c.mem, c.swap).
+		setCPULimit(c.cpus).
+		setProcessLimit(c.pids)
+
 	return cg.Load()
 }
 
@@ -64,26 +64,11 @@ func (c *container) removeCGroups() error {
 	return cg.Remove()
 }
 
-func (c *container) mountFromImage(img v1.Image) error {
-	mountPoint := filepath.Join(CtrDir, c.digest, "mnt")
-	if err := os.MkdirAll(mountPoint, 0755); err != nil {
-		return err
-	}
+func (c *container) mountFromImage(img v1.Image) (func() error, error) {
+	target := filepath.Join(CtrDir, c.digest, "mnt")
 	layers, err := getImageLayers(img)
 	if err != nil {
-		return err
+		return nil, errorWithMessage(err, "unable to get image layers")
 	}
-	if err := overlayFsMount(mountPoint, layers, false); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (c *container) unmountFs() error {
-	containerPath := filepath.Join(CtrDir, c.digest)
-	mountPoint := filepath.Join(containerPath, "mnt")
-	if err := syscall.Unmount(mountPoint, 0); err != nil {
-		return err
-	}
-	return os.RemoveAll(containerPath)
+	return overlayFsMount(target, layers, false)
 }

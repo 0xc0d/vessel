@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,82 +12,103 @@ import (
 )
 
 // runRun runs a command inside a new container
-func runRun(cmd *cobra.Command, args []string) {
+func runRun(cmd *cobra.Command, args []string) error {
 	img, err := getImage(args[0])
-	CheckErr(err)
+	if err != nil {
+		message := fmt.Sprintf("local/remote image %s not found", args[0])
+		return errorWithMessage(err, message)
+	}
 
+	// create container from flags and set a random hash for it
 	ctr := new(container)
-	flags := cmd.Flags()
-	flags.StringVarP(&ctr.name, "name", "", "", "Container name")
-	flags.StringVarP(&ctr.hostname, "host", "", "", "Container Hostname")
-	flags.IntVarP(&ctr.mem, "memory", "m", 100, "Limit memory access in MB")
-	flags.IntVarP(&ctr.swap, "swap", "s", 20, "Limit swap access in MB")
-	flags.Float64VarP(&ctr.cpus, "cpus", "c", 2, "Limit CPUs")
-	flags.IntVarP(&ctr.pids, "pids", "p", 128, "Limit number of processes")
-	flags.BoolVarP(&ctr.detach, "detach", "d", false, "run command in the background")
-
 	ctr.setDigest()
-	Must(ctr.mountFromImage(img))
-	defer func() {
-		ctr.unmountFs()
-		ctr.removeCGroups()
-	}()
 
-	options := []string{fmt.Sprintf("--container=%s", ctr.digest)}
-	flags.VisitAll(func(flag *pflag.Flag) {
-		if flag.Value.String() != "" {
-			options = append(options, fmt.Sprintf("--%s=%v", flag.Name, flag.Value))
+	// mount image layer for container use
+	unmounter, err := ctr.mountFromImage(img)
+	if err != nil {
+		return errorWithMessage(err, "can't mount image filesystem")
+	}
+	defer unmounter()
+
+	// Format fork options
+	var options []string
+	{
+		options = append(options, fmt.Sprintf("--container=%s", ctr.digest))
+		flags := cmd.Flags()
+		flags.VisitAll(func(flag *pflag.Flag) {
+			if flag.Value.String() != "" {
+				options = append(options, fmt.Sprintf("--%s=%v", flag.Name, flag.Value))
+			}
+		})
+		// Add environment values to flags
+		imgConfig, err := img.ConfigFile()
+		if err != nil {
+			return errorWithMessage(err, "can't get image config")
 		}
-	})
-
-	// Add environment values to flags
-	imgConfig, err := img.ConfigFile()
-	CheckErr(err)
-	env := strings.Join(imgConfig.Config.Env, ",")
-	options = append(options, fmt.Sprintf("--environments=%q", env))
+		env := strings.Join(imgConfig.Config.Env, ",")
+		options = append(options, fmt.Sprintf("--environments=%q", env))
+	}
 
 	commandToExec := args[1:]
 	newArgs := append([]string{"fork"}, options...)
 	newArgs = append(newArgs, commandToExec...)
 
 	newCmd := exec.Command("/proc/self/exe", newArgs...)
-	newCmd.Stdin = os.Stdin
-	newCmd.Stdout = os.Stdout
-	newCmd.Stderr = os.Stderr
-	newCmd.SysProcAttr = &syscall.SysProcAttr{
-		Cloneflags: syscall.CLONE_NEWPID |
-			syscall.CLONE_NEWNS |
-			syscall.CLONE_NEWUTS |
-			syscall.CLONE_NEWIPC,
+	newCmd.Stdin, newCmd.Stdout, newCmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+
+	var flag uintptr
+	flag = syscall.CLONE_NEWPID | syscall.CLONE_NEWNS | syscall.CLONE_NEWUTS | syscall.CLONE_NEWIPC
+	newCmd.SysProcAttr = &syscall.SysProcAttr{Cloneflags: flag}
+
+	if err := newCmd.Run(); err != nil {
+		return errorWithMessage(err, "failed run fork process")
 	}
-	newCmd.Run()
-	newCmd.Wait()
+
+	// remove CGroups created by fork process
+	if err := ctr.removeCGroups(); err != nil {
+		return errorWithMessage(err, "can't remove cgroup files")
+	}
+
+	return nil
 }
 
-func runFork(ctr *container, arg []string) {
-	Must(ctr.loadCGroups())
-
-	rootDir := filepath.Join(CtrDir, ctr.digest, "mnt")
-	if err := syscall.Chroot(rootDir); err != nil {
-		log.Println(err, rootDir)
-	}
-	Must(os.Chdir("/"))
-	//fmt.Println(os.MkdirAll("/sys", 0755))
-	//fmt.Println(os.MkdirAll("/proc", 0755))
-	Must(syscall.Mount("proc", "proc", "proc", 0, ""))
-	defer syscall.Unmount("proc", 0)
-	//Must(syscall.Mount("tmpfs", "tmp", "tmpfs", 0, ""))
-	//Must(syscall.Mount("tmpfs", "dev", "tmpfs", 0, ""))
-	syscall.Mount("sysfs", "sys", "sysfs", 0, "")
-	defer syscall.Unmount("sys", 0)
-
+func runFork(ctr *container, arg []string) error {
 	ctr.setHostname()
 
+	if err := ctr.loadCGroups(); err != nil {
+		return errorWithMessage(err, "can't initialize cgroups")
+	}
+
+	rootDir := filepath.Join(CtrDir, ctr.digest, "mnt")
+	if err := chroot(rootDir); err != nil {
+		return err
+	}
+
+	mountPoints := []mountPoint{
+		{source: "proc", target: "proc", fsType: "proc", flag: 0, option: ""},
+		{source: "sysfs", target: "sys", fsType: "sysfs", flag: 0, option: ""},
+	}
+	unmounter, err := mount(mountPoints...)
+	if err != nil {
+		return err
+	}
+	defer unmounter()
+
 	newCmd := exec.Command(arg[0])
+	if len(arg) > 1 {
+		newCmd.Args = arg[1:]
+	}
 	newCmd.Stdin = os.Stdin
 	newCmd.Stdout = os.Stdout
 	newCmd.Stderr = os.Stderr
 	newCmd.Env = ctr.env
-	newCmd.Run()
-	newCmd.Wait()
+	return newCmd.Run()
+}
+
+func chroot(root string) error {
+	if err := syscall.Chroot(root); err != nil {
+		message := fmt.Sprintf("can't change root to %s", root)
+		return errorWithMessage(err, message)
+	}
+	return os.Chdir("/")
 }

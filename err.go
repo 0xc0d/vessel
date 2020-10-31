@@ -2,12 +2,26 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"log"
 )
 
+type Err struct {
+	err error
+	msg string
+}
+
 var (
-	ErrRepoNotExist = errors.New("repository does not exist")
+	ErrNotPermitted = errors.New("Operation not permitted")
 )
+
+func (e *Err) Error() string {
+	return fmt.Sprintf("%s: %s", e.msg, e.err.Error())
+}
+
+func errorWithMessage(err error, message string) *Err {
+	return &Err{err: err, msg: message}
+}
 
 // Must is an alias for CheckErr
 func Must(err error) {
