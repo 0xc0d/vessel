@@ -12,15 +12,13 @@ func unTar(r io.Reader, dst string) error {
 		return err
 	}
 
-	hardLinks := make(map[string]string)
 	tarReader := tar.NewReader(r)
 
-loop:
 	for {
 		header, err := tarReader.Next()
 		switch {
 		case err == io.EOF:
-			break loop
+			return nil
 		case err != nil:
 			return err
 		case header == nil:
@@ -39,7 +37,7 @@ loop:
 			file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, info.Mode())
 			switch {
 			case os.IsExist(err):
-				continue loop
+				continue
 			case err != nil:
 				return err
 			}
@@ -49,10 +47,9 @@ loop:
 			}
 			file.Close()
 		case tar.TypeLink:
-			/* Store hardlinks for further finally*/
 			link := filepath.Join(dst, header.Name)
 			linkTarget := filepath.Join(dst, header.Linkname)
-			hardLinks[link] = linkTarget
+			defer os.Link(link, linkTarget)
 		case tar.TypeSymlink:
 			linkPath := filepath.Join(dst, header.Name)
 			if err := os.Symlink(header.Linkname, linkPath); err != nil {
@@ -62,11 +59,4 @@ loop:
 			}
 		}
 	}
-
-	for link, linkTarget := range hardLinks {
-		if err := os.Link(link, linkTarget); err != nil {
-			return err
-		}
-	}
-	return nil
 }
