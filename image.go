@@ -2,7 +2,6 @@ package main
 
 import (
 	"compress/gzip"
-	"encoding/json"
 	"github.com/google/go-containerregistry/pkg/crane"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"io/ioutil"
@@ -21,11 +20,6 @@ const (
 func init() {
 	Must(os.MkdirAll(TmpDir, 0755))
 	Must(os.MkdirAll(ImgDir, 0755))
-}
-
-type Manifest struct {
-	Config string
-	Layers []string
 }
 
 func getImage(src string) (v1.Image, error) {
@@ -62,7 +56,7 @@ func imageDownload(img v1.Image) error {
 	imageDigest, err := img.Digest()
 	CheckErr(err)
 
-	imageTmpPath := filepath.Join(TmpDir, imageDigest.Hex)+tarExt
+	imageTmpPath := filepath.Join(TmpDir, imageDigest.Hex) + tarExt
 	if err := crane.Save(img, imageDigest.Hex, imageTmpPath); err != nil {
 		return err
 	}
@@ -97,19 +91,7 @@ func imageExtract(img v1.Image) error {
 		return err
 	}
 
-	// Move manifest.json to ImgDir
-	if err := os.Rename(filepath.Join(imageTempDir, manifest),
-		filepath.Join(ImgDir, imageDigest.Hex, manifest)); err != nil {
-		return err
-	}
-
-	// Move config file to ImgDir
-	newManifest, err := parseImageManifest(imageDigest.Hex)
-	if err != nil {
-		return err
-	}
-	return os.Rename(filepath.Join(imageTempDir, newManifest.Config),
-		filepath.Join(ImgDir, imageDigest.Hex, newManifest.Config))
+	return nil
 }
 
 // imageLayerExtract tar Gzip layer files in image
@@ -161,9 +143,8 @@ func imageRemove(img v1.Image) error {
 	if err := os.RemoveAll(imageTempDir); err != nil {
 		return err
 	}
-	return  os.RemoveAll(imageFile)
+	return os.RemoveAll(imageFile)
 }
-
 
 func getImageLayers(img v1.Image) ([]string, error) {
 	var layers []string
@@ -181,35 +162,4 @@ func getImageLayers(img v1.Image) ([]string, error) {
 		layers = append(layers, filepath.Join(imagePath, layer.Digest.Hex))
 	}
 	return layers, nil
-}
-
-// parseImageManifest parses manifest.json file of an image
-func parseImageManifest(src string) (Manifest, error) {
-	manifestFile, err := ioutil.ReadFile(filepath.Join(ImgDir, src, manifest))
-	if err != nil {
-		return Manifest{}, err
-	}
-
-	var ml []Manifest
-	err = json.Unmarshal(manifestFile, &ml)
-	return ml[0], err
-}
-
-// parseImageConfig parses config file of an image
-func parseImageConfig(src string) (v1.Config, error) {
-	var config v1.Config
-	manifest, err := parseImageManifest(src)
-	if err != nil {
-		return config, err
-	}
-	file, err := os.Open(filepath.Join(ImgDir, src, manifest.Config))
-	if err != nil {
-		return config, err
-	}
-
-	configFile, err := v1.ParseConfigFile(file)
-	if err != nil {
-		return config, err
-	}
-	return configFile.Config, err
 }
