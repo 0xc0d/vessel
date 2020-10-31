@@ -4,28 +4,37 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 )
 
-func overlayFsMount(mountPoint string, imgLayers []string, readOnly bool) error {
+func overlayFsMount(target string, imgLayers []string, readOnly bool) (func() error, error) {
 	var upper, work []string
 	if !readOnly {
 		// Create Upper and Work Directories for writable mount
-		parentDir := filepath.Dir(strings.TrimRight(mountPoint, "/"))
+		parentDir := filepath.Dir(strings.TrimRight(target, "/"))
 		upperDir := filepath.Join(parentDir, "diff")
 		workDir := filepath.Join(parentDir, "word")
 		if err := os.MkdirAll(upperDir, 0755); err != nil {
-			return err
+			message := "can't create overlay upper directory"
+			return nil, errorWithMessage(err, message)
 		}
 		if err := os.MkdirAll(workDir, 0755); err != nil {
-			return err
+			message := "can't create overlay work directory"
+			return nil, errorWithMessage(err, message)
 		}
 		upper = append(upper, upperDir)
 		work = append(work, workDir)
 	}
 
 	opt := formatOverlayFsMountOption(imgLayers, upper, work)
-	return syscall.Mount("none", mountPoint, "overlay", 0, opt)
+	newMountPoint := mountPoint{
+		source: "none",
+		target: target,
+		fsType: "overlay",
+		flag:   0,
+		option: opt,
+	}
+
+	return mount(newMountPoint)
 }
 
 func formatOverlayFsMountOption(lowerDir, upperDir, workDir []string) string {
