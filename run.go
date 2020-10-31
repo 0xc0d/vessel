@@ -29,7 +29,10 @@ func runRun(cmd *cobra.Command, args []string) {
 
 	ctr.setDigest()
 	Must(ctr.mountFromImage(img))
-	defer ctr.unmountFs()
+	defer func() {
+		ctr.unmountFs()
+		ctr.removeCGroups()
+	}()
 
 	options := []string{fmt.Sprintf("--container=%s", ctr.digest)}
 	flags.VisitAll(func(flag *pflag.Flag) {
@@ -58,12 +61,13 @@ func runRun(cmd *cobra.Command, args []string) {
 			syscall.CLONE_NEWUTS |
 			syscall.CLONE_NEWIPC,
 	}
-
 	newCmd.Run()
 	newCmd.Wait()
 }
 
 func runFork(ctr *container, arg []string) {
+	Must(ctr.loadCGroups())
+
 	rootDir := filepath.Join(CtrDir, ctr.digest, "mnt")
 	if err := syscall.Chroot(rootDir); err != nil {
 		log.Println(err, rootDir)
@@ -75,15 +79,16 @@ func runFork(ctr *container, arg []string) {
 	defer syscall.Unmount("proc", 0)
 	//Must(syscall.Mount("tmpfs", "tmp", "tmpfs", 0, ""))
 	//Must(syscall.Mount("tmpfs", "dev", "tmpfs", 0, ""))
-	fmt.Println(syscall.Mount("sysfs", "sys", "sysfs", 0, ""))
+	syscall.Mount("sysfs", "sys", "sysfs", 0, "")
 	defer syscall.Unmount("sys", 0)
 
 	ctr.setHostname()
 
-	newCmd := exec.Command("/bin/sh")
+	newCmd := exec.Command(arg[0])
 	newCmd.Stdin = os.Stdin
 	newCmd.Stdout = os.Stdout
 	newCmd.Stderr = os.Stderr
 	newCmd.Env = ctr.env
 	newCmd.Run()
+	newCmd.Wait()
 }
