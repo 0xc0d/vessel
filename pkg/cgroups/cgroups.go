@@ -1,4 +1,4 @@
-package main
+package cgroups
 
 import (
 	"errors"
@@ -7,13 +7,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
-)
-
-const (
-	_  = iota
-	KB = 1 << (10 * iota)
-	MB
-	GB
 )
 
 const (
@@ -44,11 +37,18 @@ var controllers = []string{
 	"pids",
 }
 
-func newCGroup() *CGroups {
+func NewCGroup() *CGroups {
 	return new(CGroups)
 }
 
-func (cg *CGroups) setMemorySwapLimit(memory, swap int) *CGroups {
+func (cg *CGroups) SetPath(path string) *CGroups {
+	if path != "" {
+		cg.path = path
+	}
+	return cg
+}
+
+func (cg *CGroups) SetMemorySwapLimit(memory, swap int) *CGroups {
 	if memory > 1 {
 		cg.mem = []byte(strconv.Itoa(memory))
 		if swap > 1 {
@@ -58,14 +58,7 @@ func (cg *CGroups) setMemorySwapLimit(memory, swap int) *CGroups {
 	return cg
 }
 
-func (cg *CGroups) setPath(path string) *CGroups {
-	if path != "" {
-		cg.path = path
-	}
-	return cg
-}
-
-func (cg *CGroups) setCPULimit(quota float64) *CGroups {
+func (cg *CGroups) SetCPULimit(quota float64) *CGroups {
 	if int(quota) < runtime.NumCPU() && int(quota) > 0 {
 		cg.cfsPeriod = []byte(strconv.Itoa(defaultCfsPeriod))
 		cg.cfsQuota = []byte(strconv.Itoa(int(defaultCfsPeriod * quota)))
@@ -73,7 +66,7 @@ func (cg *CGroups) setCPULimit(quota float64) *CGroups {
 	return cg
 }
 
-func (cg *CGroups) setProcessLimit(number int) *CGroups {
+func (cg *CGroups) SetProcessLimit(number int) *CGroups {
 	if number > 0 {
 		cg.pids = []byte(strconv.Itoa(number))
 	}
@@ -109,7 +102,7 @@ func (cg *CGroups) Remove() error {
 	}
 	for _, c := range controllers {
 		dir := filepath.Join(cgroupPath, c, cg.path)
-		if err := os.Remove(dir); err != nil {
+		if err := os.RemoveAll(dir); err != nil {
 			return err
 		}
 	}

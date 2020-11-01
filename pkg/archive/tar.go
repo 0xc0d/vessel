@@ -1,18 +1,37 @@
-package main
+package archive
 
 import (
 	"archive/tar"
+	"bytes"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 )
 
-func unTar(r io.Reader, dst string) error {
+type Tarball struct {
+	reader io.Reader
+}
+
+func NewTarFile(filepath string) (Extractor, error) {
+	data, err := ioutil.ReadFile(filepath)
+	if err != nil {
+		return nil, err
+	}
+	reader := bytes.NewReader(data)
+	return &Tarball{reader: reader}, nil
+}
+
+func NewTarExtractor(r io.Reader) Extractor {
+	return &Tarball{reader: r}
+}
+
+func (t *Tarball) Extract(dst string) error {
 	if err := os.MkdirAll(dst, 0755); err != nil {
 		return err
 	}
 
-	tarReader := tar.NewReader(r)
+	tarReader := tar.NewReader(t.reader)
 
 	for {
 		header, err := tarReader.Next()

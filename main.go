@@ -1,11 +1,10 @@
 package main
 
-const (
-	VERSION = "0.1"
-)
+import "github.com/0xc0d/vessel/cmd/vessel"
 
 func main() {
-	a := newVesselCommand()
-	a.AddCommand(newRunCommand(), newForkCommand())
-	a.Execute()
+	rootCmd := vessel.NewVesselCommand()
+	rootCmd.AddCommand(vessel.NewRunCommand())
+	rootCmd.AddCommand(vessel.NewForkCommand())
+	rootCmd.Execute()
 }
