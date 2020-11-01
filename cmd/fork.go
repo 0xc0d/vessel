@@ -1,4 +1,4 @@
-package vessel
+package cmd
 
 import (
 	"errors"

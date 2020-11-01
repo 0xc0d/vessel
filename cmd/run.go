@@ -1,4 +1,4 @@
-package vessel
+package cmd
 
 import (
 	"github.com/0xc0d/vessel/internal"
@@ -13,8 +13,8 @@ func NewRunCommand() *cobra.Command {
 		DisableFlagsInUseLine: true,
 		Args:                  cobra.MinimumNArgs(1),
 		SilenceUsage:          true,
-		PreRunE: isRoot,
-		RunE: internal.Run,
+		PreRunE:               isRoot,
+		RunE:                  internal.Run,
 	}
 
 	flags := cmd.Flags()
