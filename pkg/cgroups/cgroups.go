@@ -1,6 +1,7 @@
 package cgroups
 
 import (
+	"bufio"
 	"errors"
 	"io/ioutil"
 	"os"
@@ -23,7 +24,7 @@ const (
 )
 
 type CGroups struct {
-	path      string
+	Path      string
 	mem       []byte
 	memsw     []byte
 	cfsPeriod []byte
@@ -43,7 +44,7 @@ func NewCGroup() *CGroups {
 
 func (cg *CGroups) SetPath(path string) *CGroups {
 	if path != "" {
-		cg.path = path
+		cg.Path = path
 	}
 	return cg
 }
@@ -97,11 +98,11 @@ func (cg *CGroups) Load() error {
 }
 
 func (cg *CGroups) Remove() error {
-	if cg.path == "" {
+	if cg.Path == "" {
 		return errors.New("empty")
 	}
 	for _, c := range controllers {
-		dir := filepath.Join(cgroupPath, c, cg.path)
+		dir := filepath.Join(cgroupPath, c, cg.Path)
 		if err := os.RemoveAll(dir); err != nil {
 			return err
 		}
@@ -109,9 +110,30 @@ func (cg *CGroups) Remove() error {
 	return nil
 }
 
+func (cg *CGroups) GetPids() ([]int, error) {
+	var pids []int
+
+	proc := filepath.Join(cgroupPath, controllers[0], cg.Path, procsFilename)
+	procFile, err := os.Open(proc)
+	if err != nil {
+		return pids, err
+	}
+	defer procFile.Close()
+
+	scanner := bufio.NewScanner(procFile)
+	for scanner.Scan() {
+		pid, err := strconv.Atoi(scanner.Text())
+		if err != nil {
+			return pids, err
+		}
+		pids = append(pids, pid)
+	}
+	return pids, nil
+}
+
 func (cg *CGroups) createControllersDir() error {
 	for _, c := range controllers {
-		dir := filepath.Join(cgroupPath, c, cg.path)
+		dir := filepath.Join(cgroupPath, c, cg.Path)
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return err
 		}
@@ -121,7 +143,7 @@ func (cg *CGroups) createControllersDir() error {
 
 func (cg *CGroups) enableReleaseAgent() error {
 	for _, c := range controllers {
-		file := filepath.Join(cgroupPath, c, cg.path, releaseAgentFilename)
+		file := filepath.Join(cgroupPath, c, cg.Path, releaseAgentFilename)
 		if err := ioutil.WriteFile(file, []byte{'1'}, 0644); err != nil {
 			return err
 		}
@@ -131,7 +153,7 @@ func (cg *CGroups) enableReleaseAgent() error {
 
 func (cg *CGroups) addProcess(pid int) error {
 	for _, c := range controllers {
-		file := filepath.Join(cgroupPath, c, cg.path, procsFilename)
+		file := filepath.Join(cgroupPath, c, cg.Path, procsFilename)
 		if err := ioutil.WriteFile(file, []byte(strconv.Itoa(pid)), 0644); err != nil {
 			return err
 		}
@@ -140,8 +162,8 @@ func (cg *CGroups) addProcess(pid int) error {
 }
 
 func (cg *CGroups) loadMemSwLimit() error {
-	memoryLimitFile := filepath.Join(cgroupPath, "memory", cg.path, memoryLimitFilename)
-	memswLimitFile := filepath.Join(cgroupPath, "memory", cg.path, memswLimitFilename)
+	memoryLimitFile := filepath.Join(cgroupPath, "memory", cg.Path, memoryLimitFilename)
+	memswLimitFile := filepath.Join(cgroupPath, "memory", cg.Path, memswLimitFilename)
 	if err := ioutil.WriteFile(memoryLimitFile, cg.mem, 0644); err != nil {
 		return err
 	}
@@ -149,8 +171,8 @@ func (cg *CGroups) loadMemSwLimit() error {
 }
 
 func (cg *CGroups) loadCPULimit() error {
-	cfsPeriodFile := filepath.Join(cgroupPath, "cpu", cg.path, cpuPeriodFilename)
-	cfsQuotaFile := filepath.Join(cgroupPath, "cpu", cg.path, cpuQuotaFilename)
+	cfsPeriodFile := filepath.Join(cgroupPath, "cpu", cg.Path, cpuPeriodFilename)
+	cfsQuotaFile := filepath.Join(cgroupPath, "cpu", cg.Path, cpuQuotaFilename)
 	if err := ioutil.WriteFile(cfsPeriodFile, cg.cfsPeriod, 0644); err != nil {
 		return err
 	}
@@ -158,6 +180,6 @@ func (cg *CGroups) loadCPULimit() error {
 }
 
 func (cg *CGroups) loadProcessLimit() error {
-	maxProcessFile := filepath.Join(cgroupPath, "pids", cg.path, maxProcessFilename)
+	maxProcessFile := filepath.Join(cgroupPath, "pids", cg.Path, maxProcessFilename)
 	return ioutil.WriteFile(maxProcessFile, cg.pids, 0644)
 }

@@ -16,7 +16,8 @@ func (c *Container) LoadCGroups() error {
 	if err != nil {
 		return err
 	}
-	c.Pid, err = cg.GetPid()
+	pids, err := cg.GetPids()
+	c.Pid = pids[0]
 	return err
 }
 
@@ -47,5 +48,6 @@ func GetPidByDigest(digest string) (int, error) {
 	cg := &cgroups.CGroups{
 		Path: filepath.Join("vessel", digest),
 	}
-	return cg.GetPid()
+	pids, err := cg.GetPids()
+	return pids[0], err
 }
