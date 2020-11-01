@@ -14,9 +14,8 @@ func NewForkCommand() *cobra.Command {
 	var detach bool
 	cmd := &cobra.Command{
 		Use:    "fork",
-		//Hidden: true,
-		//SilenceUsage:  true,
-		//SilenceErrors: true,
+		Hidden: true,
+		SilenceUsage:  true,
 		PreRunE: isRoot,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := ctr.LoadConfig(); err != nil {
