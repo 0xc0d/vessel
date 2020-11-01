@@ -11,8 +11,8 @@ func NewRunCommand() *cobra.Command {
 		Use:                   "run [OPTIONS] IMAGE [COMMAND] [ARG...]",
 		Short:                 "Run a command inside a new Container.",
 		DisableFlagsInUseLine: true,
-		Args:                  cobra.MinimumNArgs(1),
 		SilenceUsage:          true,
+		Args:                  cobra.MinimumNArgs(1),
 		PreRunE:               isRoot,
 		RunE:                  internal.Run,
 	}

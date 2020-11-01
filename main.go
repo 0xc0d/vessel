@@ -8,5 +8,6 @@ func main() {
 	rootCmd := cmd.NewVesselCommand()
 	rootCmd.AddCommand(cmd.NewRunCommand())
 	rootCmd.AddCommand(cmd.NewForkCommand())
+	rootCmd.AddCommand(cmd.NewExecCommand())
 	rootCmd.Execute()
 }
