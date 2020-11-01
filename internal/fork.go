@@ -9,13 +9,11 @@ import (
 	"syscall"
 )
 
-func Fork(ctr *container.Container, arg []string, detach bool) error {
+func Fork(ctr *container.Container, args []string, detach bool) error {
 	ctr.SetHostname()
-
 	if err := ctr.LoadCGroups(); err != nil {
 		return errors.Wrap(err, "can't initialize cgroups")
 	}
-
 	if err := changeRoot(ctr.RootFS, ctr.Config.WorkingDir); err != nil {
 		return err
 	}
@@ -30,10 +28,12 @@ func Fork(ctr *container.Container, arg []string, detach bool) error {
 	}
 	defer unmounter()
 
-	newCmd := exec.Command(arg[0])
-	if len(arg) > 1 {
-		newCmd.Args = arg[1:]
+
+	command, argv := cmdAndArgs(ctr.Config.Cmd)
+	if len(args) > 0 {
+		command, argv = cmdAndArgs(args)
 	}
+	newCmd := exec.Command(command, argv...)
 	newCmd.Stdin = os.Stdin
 	newCmd.Stdout = os.Stdout
 	newCmd.Stderr = os.Stderr
@@ -61,4 +61,15 @@ func runCommand(cmd *exec.Cmd, detach bool) error {
 		}
 	}
 	return nil
+}
+
+func cmdAndArgs(args []string) (command string, argv []string) {
+	if len(args) == 0 {
+		return
+	}
+	command = args[0]
+	if len(args) > 1 {
+		argv = args[1:]
+	}
+	return
 }
