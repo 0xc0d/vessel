@@ -28,7 +28,6 @@ func Fork(ctr *container.Container, args []string, detach bool) error {
 	}
 	defer unmounter()
 
-
 	command, argv := cmdAndArgs(ctr.Config.Cmd)
 	if len(args) > 0 {
 		command, argv = cmdAndArgs(args)
@@ -68,8 +67,6 @@ func cmdAndArgs(args []string) (command string, argv []string) {
 		return
 	}
 	command = args[0]
-	if len(args) > 1 {
-		argv = args[1:]
-	}
+	argv = args[1:]
 	return
 }

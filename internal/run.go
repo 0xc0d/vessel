@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"github.com/0xc0d/vessel/pkg/container"
 	"github.com/0xc0d/vessel/pkg/image"
+	"github.com/0xc0d/vessel/pkg/reexec"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"os"
-	"os/exec"
 	"strings"
 	"syscall"
 )
@@ -40,17 +40,27 @@ func Run(cmd *cobra.Command, args []string) error {
 	options = append(options, fmt.Sprintf("--root=%s", ctr.RootFS))
 	options = append(options, fmt.Sprintf("--container=%s", ctr.Digest))
 
-	commandToExec := args[1:]
+	newArgs := []string{"fork"}
+	newArgs = append(newArgs, options...)
+	newArgs = append(newArgs, args[1:]...)
 
-	newArgs := append([]string{"fork"}, options...)
-	newArgs = append(newArgs, commandToExec...)
-
-	newCmd := exec.Command("/proc/self/exe", newArgs...)
+	newCmd := reexec.Command(newArgs...)
 	newCmd.Stdin, newCmd.Stdout, newCmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 
-	var flag uintptr
-	flag = syscall.CLONE_NEWPID | syscall.CLONE_NEWNS | syscall.CLONE_NEWUTS | syscall.CLONE_NEWIPC
-	newCmd.SysProcAttr = &syscall.SysProcAttr{Cloneflags: flag}
+	newCmd.SysProcAttr = &syscall.SysProcAttr{
+		Cloneflags: syscall.CLONE_NEWNS |
+			syscall.CLONE_NEWUTS |
+			syscall.CLONE_NEWIPC |
+			syscall.CLONE_NEWPID |
+			syscall.CLONE_NEWNET |
+			syscall.CLONE_NEWUSER,
+		UidMappings: []syscall.SysProcIDMap{
+			{ContainerID: 0, HostID: os.Getuid(), Size: 1},
+		},
+		GidMappings: []syscall.SysProcIDMap{
+			{ContainerID: 0, HostID: os.Getgid(), Size: 1},
+		},
+	}
 
 	if err := newCmd.Run(); err != nil {
 		return errors.Wrap(err, "failed run fork process")
