@@ -44,10 +44,10 @@ func changeRoot(root, workdir string) error {
 	if err := syscall.Chroot(root); err != nil {
 		return errors.Wrapf(err, "can't change root to %s", root)
 	}
-	if workdir != "" {
-		return os.Chdir(workdir)
+	if workdir == "" {
+		workdir = "/"
 	}
-	return os.Chdir("/")
+	return os.Chdir(workdir)
 }
 
 func runCommand(cmd *exec.Cmd, detach bool) error {
