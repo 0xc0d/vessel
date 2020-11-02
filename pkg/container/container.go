@@ -22,7 +22,6 @@ type Container struct {
 	Config *v1.Config
 	Digest string
 	RootFS string
-	Name   string
 	Pid    int
 	mem    int
 	swap   int
@@ -51,6 +50,10 @@ func (c *Container) Remove() error {
 
 func (c *Container) MountFromImage(img v1.Image) (filesystem.Unmounter, error) {
 	target := filepath.Join(CtrDir, c.Digest, "mnt")
+	if err := os.MkdirAll(target, 0700); err != nil {
+		return nil, errors.Wrapf(err, "can't create %s directory", target)
+	}
+
 	c.RootFS = target
 
 	layers, err := image.GetLayers(img)

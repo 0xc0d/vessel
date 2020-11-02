@@ -16,8 +16,8 @@ const (
 )
 
 func init() {
-	os.MkdirAll(TmpDir, 0755)
-	os.MkdirAll(ImgDir, 0755)
+	os.MkdirAll(TmpDir, 0700)
+	os.MkdirAll(ImgDir, 0700)
 }
 
 func NewImage(name string) (v1.Image, error) {

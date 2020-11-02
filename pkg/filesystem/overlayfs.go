@@ -13,11 +13,11 @@ func OverlayMount(target string, imgLayers []string, readOnly bool) (Unmounter, 
 		// Create Upper and Work Directories for writable Mount
 		parentDir := filepath.Dir(strings.TrimRight(target, "/"))
 		upperDir := filepath.Join(parentDir, "diff")
-		workDir := filepath.Join(parentDir, "word")
-		if err := os.MkdirAll(upperDir, 0755); err != nil {
+		workDir := filepath.Join(parentDir, "work")
+		if err := os.MkdirAll(upperDir, 0700); err != nil {
 			return nil, errors.Wrap(err, "can't create overlay upper directory")
 		}
-		if err := os.MkdirAll(workDir, 0755); err != nil {
+		if err := os.MkdirAll(workDir, 0700); err != nil {
 			return nil, errors.Wrap(err, "can't create overlay work directory")
 		}
 		upper = append(upper, upperDir)

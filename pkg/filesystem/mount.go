@@ -2,7 +2,6 @@ package filesystem
 
 import (
 	"github.com/pkg/errors"
-	"os"
 	"syscall"
 )
 
@@ -27,9 +26,6 @@ func Mount(mountPoints...MountPoint) (Unmounter, error) {
 	}
 
 	for _, p := range mountPoints {
-		if err := os.MkdirAll(p.Target, 0755); err != nil {
-			return unmounter, errors.Wrapf(err, "can't create %s directory", p.Target)
-		}
 		if err := syscall.Mount(p.Source, p.Target, p.Type, p.Flag, p.Option); err != nil {
 			return unmounter, errors.Wrapf(err, "unable to mount %s to %s", p.Source, p.Target)
 		}
