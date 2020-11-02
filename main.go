@@ -9,5 +9,6 @@ func main() {
 	rootCmd.AddCommand(cmd.NewRunCommand())
 	rootCmd.AddCommand(cmd.NewForkCommand())
 	rootCmd.AddCommand(cmd.NewExecCommand())
+	rootCmd.AddCommand(cmd.NewPsCommand())
 	rootCmd.Execute()
 }

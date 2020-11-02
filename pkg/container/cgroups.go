@@ -44,10 +44,18 @@ func (c *Container) SetProcessLimit(pids int) *Container {
 	return c
 }
 
-func GetPidByDigest(digest string) (int, error) {
+func (c *Container) GetPids() ([]int, error) {
+	cg := &cgroups.CGroups{
+		Path: filepath.Join("vessel", c.Digest),
+	}
+	pids, err := cg.GetPids()
+	return pids, err
+}
+
+func GetPidsByDigest(digest string) ([]int, error) {
 	cg := &cgroups.CGroups{
 		Path: filepath.Join("vessel", digest),
 	}
 	pids, err := cg.GetPids()
-	return pids[0], err
+	return pids, err
 }

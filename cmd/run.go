@@ -18,7 +18,6 @@ func NewRunCommand() *cobra.Command {
 	}
 
 	flags := cmd.Flags()
-	flags.StringP("name", "", "", "Container name")
 	flags.StringP("host", "", "", "Container Hostname")
 	flags.IntP("memory", "m", 100, "Limit memory access in MB")
 	flags.IntP("swap", "s", 20, "Limit swap access in MB")

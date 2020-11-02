@@ -125,7 +125,7 @@ func GetContainerByDigest(digest string) (*Container, error) {
 	if err != nil {
 		return nil, err
 	}
-	pid, err := GetPidByDigest(ctrDigest)
+	pid, err := GetPidsByDigest(ctrDigest)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +133,7 @@ func GetContainerByDigest(digest string) (*Container, error) {
 		Config: config,
 		RootFS: filepath.Join(CtrDir, ctrDigest, "mnt"),
 		Digest: ctrDigest,
-		Pid:    pid,
+		Pid:    pid[0],
 	}
 	return ctr, nil
 }

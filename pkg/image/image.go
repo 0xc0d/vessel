@@ -4,7 +4,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/crane"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 )
 
@@ -15,10 +14,7 @@ const (
 	tarGzExt = ".tar.gz"
 )
 
-func init() {
-	os.MkdirAll(TmpDir, 0700)
-	os.MkdirAll(ImgDir, 0700)
-}
+
 
 func NewImage(name string) (v1.Image, error) {
 	img, err := crane.Pull(name)

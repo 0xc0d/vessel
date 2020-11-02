@@ -21,10 +21,7 @@ func Exec(ctrDigest string, args []string, detach bool) error {
 		return errors.Errorf("container %s is not running", ctr.Digest)
 	}
 
-	err = setNamespace(ctr.Pid, syscall.CLONE_NEWUTS|
-		syscall.CLONE_NEWIPC|
-		syscall.CLONE_NEWPID|
-		syscall.CLONE_NEWNET)
+	err = setNamespace(ctr.Pid, syscall.CLONE_NEWUTS|syscall.CLONE_NEWIPC|syscall.CLONE_NEWPID|syscall.CLONE_NEWNET)
 	if err != nil {
 		return err
 	}
@@ -72,7 +69,7 @@ func setNamespace(pid int, flag int) error {
 		}
 
 		if err := unix.Setns(int(nsFile.Fd()), k); err != nil {
-			return errors.Wrapf(err, "can't setNs to %s", v)
+			return errors.Wrapf(err, "can't setns to %s", v)
 		}
 	}
 

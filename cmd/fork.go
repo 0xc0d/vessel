@@ -28,7 +28,6 @@ func NewForkCommand() *cobra.Command {
 	flags := cmd.Flags()
 	flags.StringVar(&ctr.Digest, "container", "", "")
 	flags.StringVar(&ctr.RootFS, "root", "", "")
-	flags.StringVar(&ctr.Name, "name", "", "")
 	flags.StringVar(&ctr.Config.Hostname, "host", "", "")
 	flags.BoolVar(&detach, "detach", false, "")
 	mem := flags.Int("memory", 100, "")
