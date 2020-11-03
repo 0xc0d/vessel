@@ -22,7 +22,7 @@ type Container struct {
 	Config *v1.Config
 	Digest string
 	RootFS string
-	Pid    int
+	Pids   []int
 	mem    int
 	swap   int
 	pids   int
@@ -48,7 +48,7 @@ func (c *Container) Remove() error {
 	return os.RemoveAll(filepath.Join(CtrDir, c.Digest))
 }
 
-func (c *Container) MountFromImage(img v1.Image) (filesystem.Unmounter, error) {
+func (c *Container) MountFromImage(img *image.Image) (filesystem.Unmounter, error) {
 	target := filepath.Join(CtrDir, c.Digest, "mnt")
 	if err := os.MkdirAll(target, 0700); err != nil {
 		return nil, errors.Wrapf(err, "can't create %s directory", target)
@@ -56,7 +56,15 @@ func (c *Container) MountFromImage(img v1.Image) (filesystem.Unmounter, error) {
 
 	c.RootFS = target
 
-	layers, err := image.GetLayers(img)
+	imgLayers, err := img.Layers()
+	layers := make([]string, 0)
+	for i := range imgLayers {
+		digest, err := imgLayers[i].Digest()
+		if err != nil {
+			return nil, err
+		}
+		layers = append(layers, filepath.Join(image.LyrDir, digest.Hex))
+	}
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to get image layers")
 	}
@@ -106,6 +114,9 @@ func GetAllContainer() ([]*Container, error) {
 			continue
 		}
 		ctr, err := GetContainerByDigest(file.Name())
+		if os.IsNotExist(err) {
+			continue
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -121,11 +132,11 @@ func GetContainerByDigest(digest string) (*Container, error) {
 		return nil, errors.Errorf("No such container: %s", digest)
 	}
 
-	config, err := GetConfigByDigest(ctrDigest)
+	config, err := getConfigByDigest(ctrDigest)
 	if err != nil {
 		return nil, err
 	}
-	pid, err := GetPidsByDigest(ctrDigest)
+	pids, err := getPidsByDigest(ctrDigest)
 	if err != nil {
 		return nil, err
 	}
@@ -133,12 +144,12 @@ func GetContainerByDigest(digest string) (*Container, error) {
 		Config: config,
 		RootFS: filepath.Join(CtrDir, ctrDigest, "mnt"),
 		Digest: ctrDigest,
-		Pid:    pid[0],
+		Pids:   pids,
 	}
 	return ctr, nil
 }
 
-func GetConfigByDigest(digest string) (*v1.Config, error) {
+func getConfigByDigest(digest string) (*v1.Config, error) {
 	cfgPath := filepath.Join(CtrDir, digest, CtrCfg)
 	cfgFile, err := os.Open(cfgPath)
 	if err != nil {
