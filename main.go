@@ -14,5 +14,7 @@ func main() {
 	rootCmd.AddCommand(cmd.NewPsCommand())
 	rootCmd.AddCommand(cmd.NewImagesCommand())
 	err := rootCmd.Execute()
-	fmt.Fprintln(os.Stderr, err)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+	}
 }
