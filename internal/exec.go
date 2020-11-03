@@ -12,6 +12,12 @@ import (
 	"syscall"
 )
 
+// Exec runs a command inside an existing container.
+//
+// It asks for container digest, command and arg to run, and a
+// detach bool. Container digest can be a prefix of digest.
+//
+// If detach is true, Exec never wait for command to get done and returns.
 func Exec(ctrDigest string, args []string, detach bool) error {
 	ctr, err := container.GetContainerByDigest(ctrDigest)
 	if err != nil {
@@ -49,6 +55,14 @@ func Exec(ctrDigest string, args []string, detach bool) error {
 	return nil
 }
 
+// setNamespace calls setns syscall for set of flags. It changes
+// current process namespace to namespace of another process which
+// can be specified by pid.
+//
+// NOTE: A process may not be reassociated with a new mount namespace
+// if it is multi-threaded. Changing the mount namespace requires that
+// the caller possess both CAP_SYS_CHROOT and CAP_SYS_ADMIN capabilities
+// in its own user namespace and CAP_SYS_ADMIN in the target mount namespace.
 func setNamespace(pid int, flag int) error {
 	nsBase := filepath.Join("/proc", strconv.Itoa(pid), "ns")
 	ns := map[int]string{

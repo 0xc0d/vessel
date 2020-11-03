@@ -67,6 +67,7 @@ func Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// rawFlags convert a pflag.FlagSet to a slice of string.
 func rawFlags(flags *pflag.FlagSet) []string {
 	var flagList []string
 	flags.VisitAll(func(flag *pflag.Flag) {
@@ -78,10 +79,12 @@ func rawFlags(flags *pflag.FlagSet) []string {
 	return flagList
 }
 
-func getImage(name string) (*image.Image, error) {
-	img, err := image.NewImage(name)
+// getImage pulls an image and download its layers if it image
+// does not exist locally.
+func getImage(src string) (*image.Image, error) {
+	img, err := image.NewImage(src)
 	if err != nil {
-		return img, errors.Wrapf(err, "Can't pull %q", name)
+		return img, errors.Wrapf(err, "Can't pull %q", src)
 	}
 	exists, err := img.Exists()
 	if err != nil {

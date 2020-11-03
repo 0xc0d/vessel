@@ -9,14 +9,19 @@ import (
 
 var ErrEmptyRootFS = errors.New("root flag is required")
 
+// NewForkCommand implements and returns fork command.
+// fork command is called by reexec to apply namespaces.
+//
+// It is a hidden command and requires root path and
+// container id to run.
 func NewForkCommand() *cobra.Command {
 	ctr := container.NewContainer()
 	var detach bool
 	cmd := &cobra.Command{
-		Use:    "fork",
-		Hidden: true,
-		SilenceUsage:  true,
-		PreRunE: isRoot,
+		Use:          "fork",
+		Hidden:       true,
+		SilenceUsage: true,
+		PreRunE:      isRoot,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := ctr.LoadConfig(); err != nil {
 				return err

@@ -38,17 +38,22 @@ var controllers = []string{
 	"pids",
 }
 
+// NewCGroup creates an empty CGroups
 func NewCGroup() *CGroups {
 	return new(CGroups)
 }
 
+// SetPath sets Path for CGroups.
+//
+// NOTE: it does not require CGroup base path (/sys/fs/cgroup)
 func (cg *CGroups) SetPath(path string) *CGroups {
-	if path != "" {
-		cg.Path = path
-	}
+	cg.Path = path
 	return cg
 }
 
+// SetMemorySwapLimit sets memory and swap limit for CGroups.
+//
+// Zero or lower values consider as MAX.
 func (cg *CGroups) SetMemorySwapLimit(memory, swap int) *CGroups {
 	if memory > 1 {
 		cg.mem = []byte(strconv.Itoa(memory))
@@ -59,6 +64,7 @@ func (cg *CGroups) SetMemorySwapLimit(memory, swap int) *CGroups {
 	return cg
 }
 
+// SetCPULimit sets number of CPU for the CGroups.
 func (cg *CGroups) SetCPULimit(quota float64) *CGroups {
 	if int(quota) < runtime.NumCPU() && int(quota) > 0 {
 		cg.cfsPeriod = []byte(strconv.Itoa(defaultCfsPeriod))
@@ -67,6 +73,8 @@ func (cg *CGroups) SetCPULimit(quota float64) *CGroups {
 	return cg
 }
 
+// SetProcessLimit sets maximum processes than can be created
+// simultaneously in CGroups.
 func (cg *CGroups) SetProcessLimit(number int) *CGroups {
 	if number > 0 {
 		cg.pids = []byte(strconv.Itoa(number))
@@ -74,6 +82,8 @@ func (cg *CGroups) SetProcessLimit(number int) *CGroups {
 	return cg
 }
 
+
+// Load affects CGroups.
 func (cg *CGroups) Load() error {
 	if err := cg.createControllersDir(); err != nil {
 		return err
@@ -97,6 +107,9 @@ func (cg *CGroups) Load() error {
 	return nil
 }
 
+// Remove removes CGroups.
+//
+// It will only works if there is no process running in the CGroups
 func (cg *CGroups) Remove() error {
 	if cg.Path == "" {
 		return errors.New("empty")
@@ -110,6 +123,7 @@ func (cg *CGroups) Remove() error {
 	return nil
 }
 
+// GetPids returns slice of pids running on CGroups.
 func (cg *CGroups) GetPids() ([]int, error) {
 	var pids []int
 
@@ -141,6 +155,7 @@ func (cg *CGroups) createControllersDir() error {
 	return nil
 }
 
+// enableReleaseAgent enables notify_on_release for CGroup.
 func (cg *CGroups) enableReleaseAgent() error {
 	for _, c := range controllers {
 		file := filepath.Join(cgroupPath, c, cg.Path, releaseAgentFilename)
@@ -151,6 +166,7 @@ func (cg *CGroups) enableReleaseAgent() error {
 	return nil
 }
 
+// addProcess adds a pid into a CGroup.
 func (cg *CGroups) addProcess(pid int) error {
 	for _, c := range controllers {
 		file := filepath.Join(cgroupPath, c, cg.Path, procsFilename)

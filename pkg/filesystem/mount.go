@@ -15,6 +15,7 @@ type MountPoint struct {
 
 type Unmounter func() error
 
+// Mount mounts list of mountPoints and returns a function to unmount them.
 func Mount(mountPoints...MountPoint) (Unmounter, error) {
 	unmounter := func() error {
 		for _, p := range mountPoints {

@@ -10,6 +10,7 @@ import (
 type Repository map[string]string
 type Repositories map[string]Repository
 
+// Download downloads image's layers.
 func (i *Image) Download() error {
 	layers, err := i.Layers()
 	if err != nil {
@@ -25,7 +26,7 @@ func (i *Image) Download() error {
 			return err
 		}
 
-		tarball := archive.NewTarExtractor(rc)
+		tarball := archive.NewTar(rc)
 		err = tarball.Extract(filepath.Join(LyrDir, digest.Hex))
 		rc.Close()
 		if err != nil {
@@ -35,6 +36,10 @@ func (i *Image) Download() error {
 	return i.addToRepositories()
 }
 
+// addToRepositories adds a image to repository.
+//
+// after downloading image's layer, call this function to prevent
+// further duplicate downloads.
 func (i *Image) addToRepositories() error {
 	file, err := os.OpenFile(RepoFile, os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {

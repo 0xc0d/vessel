@@ -8,6 +8,7 @@ import (
 	"strings"
 )
 
+// randomHash creates random Length 64 hash
 func randomHash() string {
 	randBuffer := make([]byte, 32)
 	rand.Read(randBuffer)
@@ -15,6 +16,7 @@ func randomHash() string {
 	return fmt.Sprintf("%x", sha)[:64]
 }
 
+// completeDigest completes a prefix to a length 64 digest.
 func completeDigest(prefix string) (digest string) {
 	if len(prefix) == DigestStdLen {
 		return prefix

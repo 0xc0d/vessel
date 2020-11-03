@@ -25,6 +25,9 @@ type Image struct {
 	Tag        string
 }
 
+// NewImage returns a new Image.
+//
+// It pulls image ans sets the Registry, Repository, Name, and Tag.
 func NewImage(src string) (*Image, error) {
 	tag, err := name.NewTag(src)
 	img, err := crane.Pull(tag.Name())

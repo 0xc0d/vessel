@@ -13,8 +13,9 @@ type Tarball struct {
 	reader io.Reader
 }
 
-func NewTarFile(filepath string) (Extractor, error) {
-	data, err := ioutil.ReadFile(filepath)
+// NewTarFile creates a tarball from a given filename.
+func NewTarFile(filename string) (Extractor, error) {
+	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
@@ -22,10 +23,12 @@ func NewTarFile(filepath string) (Extractor, error) {
 	return &Tarball{reader: reader}, nil
 }
 
-func NewTarExtractor(r io.Reader) Extractor {
+// NewTar creates a tarball from a given a Reader.
+func NewTar(r io.Reader) Extractor {
 	return &Tarball{reader: r}
 }
 
+// Extract extracts content of a tarball into dst.
 func (t *Tarball) Extract(dst string) error {
 	if err := os.MkdirAll(dst, 0755); err != nil {
 		return err

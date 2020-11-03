@@ -29,6 +29,7 @@ type Container struct {
 	cpus   float64
 }
 
+/// NewContainer returns a new Container with a random digest.
 func NewContainer() *Container {
 	ctr := &Container{
 		Config: new(v1.Config),
@@ -37,6 +38,9 @@ func NewContainer() *Container {
 	return ctr
 }
 
+// SetHostname sets Hostname for container.
+//
+// If Hostname was empty it uses the digest[:12]
 func (c *Container) SetHostname() {
 	if c.Config.Hostname == "" {
 		c.Config.Hostname = c.Digest[:12]
@@ -44,10 +48,14 @@ func (c *Container) SetHostname() {
 	syscall.Sethostname([]byte(c.Config.Hostname))
 }
 
+// Remove removes Container directory. It only works if all
+// mount points have unmounted.
 func (c *Container) Remove() error {
 	return os.RemoveAll(filepath.Join(CtrDir, c.Digest))
 }
 
+// MountFromImage mounts filesystem for Container from an Image.
+// It uses overlayFS for union mount of multiple layers.
 func (c *Container) MountFromImage(img *image.Image) (filesystem.Unmounter, error) {
 	target := filepath.Join(CtrDir, c.Digest, "mnt")
 	if err := os.MkdirAll(target, 0700); err != nil {
@@ -77,6 +85,7 @@ func (c *Container) MountFromImage(img *image.Image) (filesystem.Unmounter, erro
 	return unmounter, c.copyImageConfig(img)
 }
 
+// copyImageConfig copies image config into Container Directory.
 func (c *Container) copyImageConfig(img v1.Image) error {
 	file := filepath.Join(CtrDir, c.Digest, CtrCfg)
 	data, err := img.RawConfigFile()
@@ -87,6 +96,7 @@ func (c *Container) copyImageConfig(img v1.Image) error {
 	return ioutil.WriteFile(file, data, 0655)
 }
 
+// LoadConfig loads and sets Container Config from its image config file.
 func (c *Container) LoadConfig() error {
 	filename := filepath.Join(CtrDir, c.Digest, CtrCfg)
 	file, err := os.Open(filename)
@@ -102,7 +112,8 @@ func (c *Container) LoadConfig() error {
 	return nil
 }
 
-func GetAllContainer() ([]*Container, error) {
+// GetAllContainers returns slice of running Containers.
+func GetAllContainers() ([]*Container, error) {
 	all := make([]*Container, 0)
 
 	list, err := ioutil.ReadDir(CtrDir)
@@ -126,6 +137,7 @@ func GetAllContainer() ([]*Container, error) {
 	return all, nil
 }
 
+// GetContainerByDigest returns a Container associate with a digest.
 func GetContainerByDigest(digest string) (*Container, error) {
 	ctrDigest := completeDigest(digest)
 	if len(ctrDigest) != DigestStdLen {

@@ -15,6 +15,7 @@ const (
 
 var ErrNotPermitted = errors.New("operation not permitted")
 
+// Make vessel directories first.
 func init() {
 	os.MkdirAll(vesselDir, 0711)
 	os.MkdirAll(ImgDir, 0700)
@@ -34,6 +35,9 @@ func NewVesselCommand() *cobra.Command {
 	return cmd
 }
 
+
+// isRoot implements a cobra acceptable function and
+// returns ErrNotPermitted if user is not root.
 func isRoot(_ *cobra.Command, _ []string) error {
 	if os.Getuid() != 0 {
 		return ErrNotPermitted

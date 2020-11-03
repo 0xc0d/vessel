@@ -9,6 +9,11 @@ import (
 	"syscall"
 )
 
+// Fork will call by Run. It is a hack to fork a whole new Go process
+// inside a new namespace.
+//
+// If detach was enable function returns immediately after starting
+// the command and never wait for result
 func Fork(ctr *container.Container, args []string, detach bool) error {
 	ctr.SetHostname()
 	if err := ctr.LoadCGroups(); err != nil {
@@ -40,6 +45,8 @@ func Fork(ctr *container.Container, args []string, detach bool) error {
 	return runCommand(newCmd, detach)
 }
 
+// changeRoot calls chroot syscall for the given root filesystem and will
+// change working directory into workdir
 func changeRoot(root, workdir string) error {
 	if err := syscall.Chroot(root); err != nil {
 		return errors.Wrapf(err, "can't change root to %s", root)
@@ -50,6 +57,7 @@ func changeRoot(root, workdir string) error {
 	return os.Chdir(workdir)
 }
 
+// runCommand runs a command and wait or not wait for it based on detach.
 func runCommand(cmd *exec.Cmd, detach bool) error {
 	if err := cmd.Start(); err != nil {
 		return err
@@ -62,6 +70,7 @@ func runCommand(cmd *exec.Cmd, detach bool) error {
 	return nil
 }
 
+// cmdAndArgs separate command (args[0]) and its argv.
 func cmdAndArgs(args []string) (command string, argv []string) {
 	if len(args) == 0 {
 		return

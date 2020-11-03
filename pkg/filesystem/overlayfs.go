@@ -7,6 +7,9 @@ import (
 	"strings"
 )
 
+// OverlayMount mounts a list of source directories to a target.
+//
+// If readOnly was true the target will be read-only.
 func OverlayMount(target string, src []string, readOnly bool) (Unmounter, error) {
 	var upper, work []string
 	if !readOnly {
@@ -36,6 +39,7 @@ func OverlayMount(target string, src []string, readOnly bool) (Unmounter, error)
 	return Mount(newMountPoint)
 }
 
+// formatOverlayFsMountOption returns formatted overlayFS mount option.
 func formatOverlayFsMountOption(lowerDir, upperDir, workDir []string) string {
 	lower := "lowerdir="
 	lower += strings.Join(lowerDir, ":")

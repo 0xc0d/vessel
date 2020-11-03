@@ -13,7 +13,7 @@ import (
 
 // Ps gets all running containers and prints them.
 func Ps(_ *cobra.Command, _ []string) error {
-	allCtr, err := container.GetAllContainer()
+	allCtr, err := container.GetAllContainers()
 	if err != nil {
 		return err
 	}
@@ -32,7 +32,7 @@ func pPrintContainer(ctrs []*container.Container) {
 
 		// pid[0] is the reexec command
 		// pid[1] is the init command
-		cmd, err := getCmdlineById(pids[1])
+		cmd, err := cmdlineById(pids[1])
 		if err != nil {
 			continue
 		}
@@ -41,7 +41,8 @@ func pPrintContainer(ctrs []*container.Container) {
 	}
 }
 
-func getCmdlineById(pid int) (string, error) {
+// cmdlineById returns command associated with a pid.
+func cmdlineById(pid int) (string, error) {
 	cmdline, err := ioutil.ReadFile(filepath.Join("/proc", strconv.Itoa(pid), "cmdline"))
 	cmdline = bytes.ReplaceAll(cmdline, []byte{0}, []byte{' '})
 	cmdline = bytes.TrimSpace(cmdline)
