@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func OverlayMount(target string, imgLayers []string, readOnly bool) (Unmounter, error) {
+func OverlayMount(target string, src []string, readOnly bool) (Unmounter, error) {
 	var upper, work []string
 	if !readOnly {
 		// Create Upper and Work Directories for writable Mount
@@ -24,7 +24,7 @@ func OverlayMount(target string, imgLayers []string, readOnly bool) (Unmounter, 
 		work = append(work, workDir)
 	}
 
-	opt := formatOverlayFsMountOption(imgLayers, upper, work)
+	opt := formatOverlayFsMountOption(src, upper, work)
 	newMountPoint := MountPoint{
 		Source: "none",
 		Target: target,
