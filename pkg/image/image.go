@@ -1,60 +1,75 @@
 package image
 
 import (
+	"encoding/json"
 	"github.com/google/go-containerregistry/pkg/crane"
+	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"io/ioutil"
-	"path/filepath"
+	"os"
 )
 
 const (
-	TmpDir   = "/var/lib/vessel/temp"
 	ImgDir   = "/var/lib/vessel/images"
-	tarExt   = ".tar"
-	tarGzExt = ".tar.gz"
+	RepoFile = "/var/lib/vessel/images/repositories.json"
+	LyrDir   = "/var/lib/vessel/images/layers"
 )
 
+type Image struct {
+	v1.Image
+	Registry   string
+	Repository string
+	Name       string
+	Tag        string
+}
 
-
-func NewImage(name string) (v1.Image, error) {
-	img, err := crane.Pull(name)
+func NewImage(src string) (*Image, error) {
+	tag, err := name.NewTag(src)
+	img, err := crane.Pull(tag.Name())
 	if err != nil {
 		return nil, err
 	}
 
-	return img, nil
+	newImage := &Image{
+		Image:      img,
+		Registry:   tag.RegistryStr(),
+		Repository: tag.RepositoryStr(),
+		Name:       tag.Name(),
+		Tag:        tag.TagStr(),
+	}
+	return newImage, nil
 }
 
-func GetLayers(img v1.Image) ([]string, error) {
-	var layers []string
-	imageDigest, err := img.Digest()
+// Exists checks for image existence in local storage.
+func (i *Image) Exists() (bool, error) {
+	repos, err := GetAll()
 	if err != nil {
-		return layers, err
+		return false, err
 	}
-	imgManifest, err := img.Manifest()
-	if err != nil {
-		return nil, err
-	}
-
-	imagePath := filepath.Join(ImgDir, imageDigest.Hex)
-	for _, layer := range imgManifest.Layers {
-		layers = append(layers, filepath.Join(imagePath, layer.Digest.Hex))
-	}
-	return layers, nil
-}
-
-// exists checks for image existence in local storage
-func Exists(img v1.Image) bool {
-	imageDigest, err := img.Digest()
-
-	files, err := ioutil.ReadDir(ImgDir)
-	if err != nil {
-		return false
-	}
-	for _, file := range files {
-		if file.IsDir() && imageDigest.Hex == file.Name() {
-			return true
+	for _, repo := range repos {
+		for repoName, _ := range repo {
+			if repoName == i.Name {
+				return true, nil
+			}
 		}
 	}
-	return false
+	return false, nil
+}
+
+func GetAll() (Repositories, error) {
+	repos := make(Repositories)
+
+	data, err := ioutil.ReadFile(RepoFile)
+	if os.IsNotExist(err) {
+		return repos, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if err := json.Unmarshal(data, &repos); err != nil {
+		return nil, err
+	}
+
+	return repos, nil
 }
