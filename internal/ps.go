@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/0xc0d/vessel/pkg/container"
 	"github.com/spf13/cobra"
@@ -25,21 +26,24 @@ func pPrint(ctrs []*container.Container) {
 	fmt.Println("CONTAINER ID\t\tIMAGE       \t\tCOMMAND")
 	for _, ctr := range ctrs {
 		pids, err := ctr.GetPids()
-		if err != nil {
+		if err != nil || len(pids) < 2 {
 			continue
 		}
 
-		// pid[0] is the reexec commmand
+		// pid[0] is the reexec command
+		// pid[1] is the init command
 		cmd, err := getCmdlineById(pids[1])
 		if err != nil {
 			continue
 		}
 		image := strings.TrimLeft(ctr.Config.Image, "sha256:")
-		fmt.Printf("%.12s\t\t%.12s\t\t%s\n", ctr.Digest, image, cmd)
+		fmt.Printf("%.12s\t\t%.12s\t\t%.40q\n", ctr.Digest, image, cmd)
 	}
 }
 
 func getCmdlineById(pid int) (string, error) {
 	cmdline, err := ioutil.ReadFile(filepath.Join("/proc", strconv.Itoa(pid), "cmdline"))
+	cmdline = bytes.ReplaceAll(cmdline, []byte{0}, []byte{' '})
+	cmdline = bytes.TrimSpace(cmdline)
 	return string(cmdline), err
 }
