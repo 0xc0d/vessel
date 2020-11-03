@@ -17,11 +17,11 @@ func Exec(ctrDigest string, args []string, detach bool) error {
 	if err != nil {
 		return err
 	}
-	if ctr.Pid == 0 {
+	if len(ctr.Pids) == 0 || ctr.Pids[0] == 0 {
 		return errors.Errorf("container %s is not running", ctr.Digest)
 	}
 
-	err = setNamespace(ctr.Pid, syscall.CLONE_NEWUTS|syscall.CLONE_NEWIPC|syscall.CLONE_NEWPID|syscall.CLONE_NEWNET)
+	err = setNamespace(ctr.Pids[0], syscall.CLONE_NEWUTS|syscall.CLONE_NEWIPC|syscall.CLONE_NEWPID|syscall.CLONE_NEWNET)
 	if err != nil {
 		return err
 	}

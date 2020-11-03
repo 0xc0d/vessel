@@ -5,16 +5,14 @@ import (
 	"github.com/0xc0d/vessel/pkg/container"
 	"github.com/0xc0d/vessel/pkg/image"
 	"github.com/0xc0d/vessel/pkg/reexec"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"os"
-	"strings"
 	"syscall"
 )
 
-// Run runs a command inside a new container
+// Run runs a command inside a new container.
 func Run(cmd *cobra.Command, args []string) error {
 	ctr := container.NewContainer()
 
@@ -80,23 +78,20 @@ func rawFlags(flags *pflag.FlagSet) []string {
 	return flagList
 }
 
-func getImage(name string) (v1.Image, error) {
-	nameWithTag := withTag(name)
-	img, err := image.NewImage(nameWithTag)
+func getImage(name string) (*image.Image, error) {
+	img, err := image.NewImage(name)
 	if err != nil {
-		return img, errors.Wrapf(err, "Can't pull %q", nameWithTag)
+		return img, errors.Wrapf(err, "Can't pull %q", name)
 	}
-	if image.Exists(img) {
-		return img, nil
+	exists, err := img.Exists()
+	if err != nil {
+		return img, err
 	}
-	fmt.Printf("Unable to find image %q locally\n", nameWithTag)
-	return img, image.Download(img)
-}
+	if !exists {
+		fmt.Printf("Unable to find image %s:%s locally\n", img.Repository, img.Tag)
+		fmt.Printf("downloading the image from %s\n", img.Registry)
+		err = img.Download()
+	}
 
-func withTag(name string) string {
-	nameTag := strings.Split(name, ":")
-	if len(nameTag) != 2 || nameTag[1] == "" {
-		nameTag = append(nameTag, "latest")
-	}
-	return strings.Join(nameTag, ":")
+	return img, err
 }

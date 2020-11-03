@@ -11,18 +11,18 @@ import (
 	"strings"
 )
 
-// Run runs a command inside a new container
+// Ps gets all running containers and prints them.
 func Ps(_ *cobra.Command, _ []string) error {
 	allCtr, err := container.GetAllContainer()
 	if err != nil {
 		return err
 	}
 
-	pPrint(allCtr)
+	pPrintContainer(allCtr)
 	return nil
 }
 
-func pPrint(ctrs []*container.Container) {
+func pPrintContainer(ctrs []*container.Container) {
 	fmt.Println("CONTAINER ID\t\tIMAGE       \t\tCOMMAND")
 	for _, ctr := range ctrs {
 		pids, err := ctr.GetPids()
@@ -36,8 +36,8 @@ func pPrint(ctrs []*container.Container) {
 		if err != nil {
 			continue
 		}
-		image := strings.TrimLeft(ctr.Config.Image, "sha256:")
-		fmt.Printf("%.12s\t\t%.12s\t\t%.40q\n", ctr.Digest, image, cmd)
+		img := strings.TrimLeft(ctr.Config.Image, "sha256:")
+		fmt.Printf("%.12s\t\t%.12s\t\t%.40q\n", ctr.Digest, img, cmd)
 	}
 }
 

@@ -10,5 +10,6 @@ func main() {
 	rootCmd.AddCommand(cmd.NewForkCommand())
 	rootCmd.AddCommand(cmd.NewExecCommand())
 	rootCmd.AddCommand(cmd.NewPsCommand())
+	rootCmd.AddCommand(cmd.NewImagesCommand())
 	rootCmd.Execute()
 }

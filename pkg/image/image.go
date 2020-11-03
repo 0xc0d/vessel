@@ -7,6 +7,7 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"io/ioutil"
 	"os"
+	"strings"
 )
 
 const (
@@ -17,6 +18,7 @@ const (
 
 type Image struct {
 	v1.Image
+	ID         string
 	Registry   string
 	Repository string
 	Name       string
@@ -29,9 +31,13 @@ func NewImage(src string) (*Image, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	digest, err := img.Digest()
+	if err != nil {
+		return nil, err
+	}
 	newImage := &Image{
 		Image:      img,
+		ID:         digest.Hex,
 		Registry:   tag.RegistryStr(),
 		Repository: tag.RepositoryStr(),
 		Name:       tag.Name(),
@@ -42,26 +48,25 @@ func NewImage(src string) (*Image, error) {
 
 // Exists checks for image existence in local storage.
 func (i *Image) Exists() (bool, error) {
-	repos, err := GetAll()
+	images, err := GetAll()
 	if err != nil {
 		return false, err
 	}
-	for _, repo := range repos {
-		for repoName, _ := range repo {
-			if repoName == i.Name {
-				return true, nil
-			}
+	for _, img := range images {
+		if img.ID == i.ID {
+			return true, nil
 		}
 	}
 	return false, nil
 }
 
-func GetAll() (Repositories, error) {
+func GetAll() ([]*Image, error) {
 	repos := make(Repositories)
+	imgs := make([]*Image, 0)
 
 	data, err := ioutil.ReadFile(RepoFile)
 	if os.IsNotExist(err) {
-		return repos, nil
+		return imgs, nil
 	}
 	if err != nil {
 		return nil, err
@@ -71,5 +76,15 @@ func GetAll() (Repositories, error) {
 		return nil, err
 	}
 
-	return repos, nil
+	for repo, image := range repos {
+		for nameTag, hash := range image {
+			newImg := &Image{
+				ID:         strings.TrimLeft(hash, "sha256:"),
+				Repository: repo,
+				Tag:        strings.Split(nameTag, ":")[1],
+			}
+			imgs = append(imgs, newImg)
+		}
+	}
+	return imgs, nil
 }

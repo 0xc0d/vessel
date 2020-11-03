@@ -5,16 +5,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewPsCommand implements and returns the ps command.
-func NewPsCommand() *cobra.Command {
+// NewImagesCommand implements and returns the images command.
+func NewImagesCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:                   "ps",
-		Short:                 "List Containers",
+		Use:                   "images",
+		Short:                 "List local images",
 		DisableFlagsInUseLine: true,
 		SilenceUsage:          true,
 		Args:                  cobra.NoArgs,
 		PreRunE:               isRoot,
-		RunE:                  internal.Ps,
+		RunE:                  internal.Images,
 	}
 
 	return cmd
