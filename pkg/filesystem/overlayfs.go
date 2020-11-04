@@ -28,7 +28,7 @@ func OverlayMount(target string, src []string, readOnly bool) (Unmounter, error)
 	}
 
 	opt := formatOverlayFsMountOption(src, upper, work)
-	newMountPoint := MountPoint{
+	newMountOption := MountOption{
 		Source: "none",
 		Target: target,
 		Type:   "overlay",
@@ -36,7 +36,7 @@ func OverlayMount(target string, src []string, readOnly bool) (Unmounter, error)
 		Option: opt,
 	}
 
-	return Mount(newMountPoint)
+	return Mount(newMountOption)
 }
 
 // formatOverlayFsMountOption returns formatted overlayFS mount option.

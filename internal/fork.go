@@ -16,6 +16,13 @@ import (
 // the command and never wait for result
 func Fork(ctr *container.Container, args []string, detach bool) error {
 	ctr.SetHostname()
+	// set network
+	unset, err := ctr.SetNetworkNamespace()
+	if err != nil {
+		return errors.Wrap(err, "can't set network namespace")
+	}
+	defer unset()
+
 	if err := ctr.LoadCGroups(); err != nil {
 		return errors.Wrap(err, "can't initialize cgroups")
 	}
@@ -23,7 +30,8 @@ func Fork(ctr *container.Container, args []string, detach bool) error {
 		return err
 	}
 
-	mountPoints := []filesystem.MountPoint{
+	// Mount necessaries
+	mountPoints := []filesystem.MountOption{
 		{Source: "proc", Target: "proc", Type: "proc"},
 		{Source: "sysfs", Target: "sys", Type: "sysfs"},
 	}
@@ -42,6 +50,15 @@ func Fork(ctr *container.Container, args []string, detach bool) error {
 	newCmd.Stdout = os.Stdout
 	newCmd.Stderr = os.Stderr
 	newCmd.Env = ctr.Config.Env
+	//newCmd.SysProcAttr = &syscall.SysProcAttr{
+	//	Cloneflags: syscall.CLONE_NEWUSER,
+	//	UidMappings: []syscall.SysProcIDMap{
+	//		{ContainerID: 0, HostID: os.Getuid(), Size: 1},
+	//	},
+	//	GidMappings: []syscall.SysProcIDMap{
+	//		{ContainerID: 0, HostID: os.Getgid(), Size: 1},
+	//	},
+	//}
 	return runCommand(newCmd, detach)
 }
 

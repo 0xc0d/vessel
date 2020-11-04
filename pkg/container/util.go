@@ -21,7 +21,7 @@ func completeDigest(prefix string) (digest string) {
 	if len(prefix) == DigestStdLen {
 		return prefix
 	}
-	list, err := ioutil.ReadDir(CtrDir)
+	list, err := ioutil.ReadDir(containerPath)
 	if err != nil {
 		return
 	}

@@ -5,7 +5,7 @@ import (
 	"syscall"
 )
 
-type MountPoint struct {
+type MountOption struct {
 	Source string
 	Target string
 	Type   string
@@ -15,10 +15,10 @@ type MountPoint struct {
 
 type Unmounter func() error
 
-// Mount mounts list of mountPoints and returns a function to unmount them.
-func Mount(mountPoints...MountPoint) (Unmounter, error) {
+// Mount mounts list of mountOptions and returns a function to unmount them.
+func Mount(mountOpts ...MountOption) (Unmounter, error) {
 	unmounter := func() error {
-		for _, p := range mountPoints {
+		for _, p := range mountOpts {
 			if err := syscall.Unmount(p.Target, 0); err != nil {
 				return errors.Wrapf(err, "unable to umount %q", p.Target)
 			}
@@ -26,7 +26,7 @@ func Mount(mountPoints...MountPoint) (Unmounter, error) {
 		return nil
 	}
 
-	for _, p := range mountPoints {
+	for _, p := range mountOpts {
 		if err := syscall.Mount(p.Source, p.Target, p.Type, p.Flag, p.Option); err != nil {
 			return unmounter, errors.Wrapf(err, "unable to mount %s to %s", p.Source, p.Target)
 		}

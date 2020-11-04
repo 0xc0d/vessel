@@ -36,7 +36,7 @@ func Exec(ctrDigest string, args []string, detach bool) error {
 		return err
 	}
 
-	mountPoints := []filesystem.MountPoint{
+	mountPoints := []filesystem.MountOption{
 		{Source: "proc", Target: "proc", Type: "proc"},
 		{Source: "sysfs", Target: "sys", Type: "sysfs"},
 	}

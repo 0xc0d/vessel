@@ -50,6 +50,11 @@ func (i *Image) addToRepositories() error {
 	decoder := json.NewDecoder(file)
 	decoder.Decode(&repos)
 
+	// truncate file to overwrite
+	if file.Truncate(0) != nil {
+		return err
+	}
+
 	digest, err := i.Digest()
 	if err != nil {
 		return err

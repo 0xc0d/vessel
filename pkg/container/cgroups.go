@@ -24,7 +24,7 @@ func (c *Container) LoadCGroups() error {
 
 // RemoveCGroups removes CGroups file for container.
 // It only function if the container is not running.
-func (c *Container) RemoveCGroups() error {
+func (c *Container) removeCGroups() error {
 	cg := &cgroups.CGroups{
 		Path: filepath.Join("vessel", c.Digest),
 	}

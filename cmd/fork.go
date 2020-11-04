@@ -1,13 +1,10 @@
 package cmd
 
 import (
-	"errors"
 	"github.com/0xc0d/vessel/internal"
 	"github.com/0xc0d/vessel/pkg/container"
 	"github.com/spf13/cobra"
 )
-
-var ErrEmptyRootFS = errors.New("root flag is required")
 
 // NewForkCommand implements and returns fork command.
 // fork command is called by reexec to apply namespaces.

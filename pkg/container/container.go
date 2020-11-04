@@ -12,10 +12,11 @@ import (
 )
 
 const (
-	CtrDir       = "/var/lib/vessel/containers"
-	CtrCfg       = "config"
-	DigestStdLen = 64
-	MB           = 1 << 20
+	containerPath       = "/var/run/vessel/containers"
+	containerNetNsPath  = "/var/run/vessel/netns"
+	containerConfigFile = "config.json"
+	DigestStdLen        = 64
+	MB                  = 1 << 20
 )
 
 type Container struct {
@@ -51,13 +52,19 @@ func (c *Container) SetHostname() {
 // Remove removes Container directory. It only works if all
 // mount points have unmounted.
 func (c *Container) Remove() error {
-	return os.RemoveAll(filepath.Join(CtrDir, c.Digest))
+	if err := os.RemoveAll(filepath.Join(containerPath, c.Digest)); err != nil {
+		return err
+	}
+	if err := os.RemoveAll(filepath.Join(containerNetNsPath, c.Digest)); err != nil {
+		return err
+	}
+	return c.removeCGroups()
 }
 
 // MountFromImage mounts filesystem for Container from an Image.
 // It uses overlayFS for union mount of multiple layers.
 func (c *Container) MountFromImage(img *image.Image) (filesystem.Unmounter, error) {
-	target := filepath.Join(CtrDir, c.Digest, "mnt")
+	target := filepath.Join(containerPath, c.Digest, "mnt")
 	if err := os.MkdirAll(target, 0700); err != nil {
 		return nil, errors.Wrapf(err, "can't create %s directory", target)
 	}
@@ -87,7 +94,7 @@ func (c *Container) MountFromImage(img *image.Image) (filesystem.Unmounter, erro
 
 // copyImageConfig copies image config into Container Directory.
 func (c *Container) copyImageConfig(img v1.Image) error {
-	file := filepath.Join(CtrDir, c.Digest, CtrCfg)
+	file := filepath.Join(containerPath, c.Digest, containerConfigFile)
 	data, err := img.RawConfigFile()
 	if err != nil {
 		return err
@@ -98,7 +105,7 @@ func (c *Container) copyImageConfig(img v1.Image) error {
 
 // LoadConfig loads and sets Container Config from its image config file.
 func (c *Container) LoadConfig() error {
-	filename := filepath.Join(CtrDir, c.Digest, CtrCfg)
+	filename := filepath.Join(containerPath, c.Digest, containerConfigFile)
 	file, err := os.Open(filename)
 	if err != nil {
 		return err
@@ -116,7 +123,7 @@ func (c *Container) LoadConfig() error {
 func GetAllContainers() ([]*Container, error) {
 	all := make([]*Container, 0)
 
-	list, err := ioutil.ReadDir(CtrDir)
+	list, err := ioutil.ReadDir(containerPath)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +161,7 @@ func GetContainerByDigest(digest string) (*Container, error) {
 	}
 	ctr := &Container{
 		Config: config,
-		RootFS: filepath.Join(CtrDir, ctrDigest, "mnt"),
+		RootFS: filepath.Join(containerPath, ctrDigest, "mnt"),
 		Digest: ctrDigest,
 		Pids:   pids,
 	}
@@ -162,7 +169,7 @@ func GetContainerByDigest(digest string) (*Container, error) {
 }
 
 func getConfigByDigest(digest string) (*v1.Config, error) {
-	cfgPath := filepath.Join(CtrDir, digest, CtrCfg)
+	cfgPath := filepath.Join(containerPath, digest, containerConfigFile)
 	cfgFile, err := os.Open(cfgPath)
 	if err != nil {
 		return nil, err
