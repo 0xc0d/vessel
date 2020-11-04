@@ -19,7 +19,7 @@ func Run(cmd *cobra.Command, args []string) error {
 	defer ctr.Remove()
 
 	// setup bridge
-	if err := network.SetupBridge("vessel0", "172.30.0.1/16"); err != nil {
+	if err := network.SetupBridge("vessel0"); err != nil {
 		return err
 	}
 
@@ -94,3 +94,4 @@ func getImage(src string) (*image.Image, error) {
 
 	return img, err
 }
+

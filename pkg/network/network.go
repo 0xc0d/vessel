@@ -6,7 +6,8 @@ import (
 	"net"
 )
 
-func SetupBridge(name, IP string) error {
+func SetupBridge(name string) error {
+	// Create Bridge if does not exist
 	bridge, err := netlink.LinkByName(name)
 	if err != nil {
 		linkAttrs := netlink.NewLinkAttrs()
@@ -15,6 +16,15 @@ func SetupBridge(name, IP string) error {
 		if err := netlink.LinkAdd(bridge); err != nil {
 			return err
 		}
+	}
+
+	// Add IP address if there is not
+	addrList, err := netlink.AddrList(bridge, 0)
+	if err != nil {
+		return err
+	}
+	if len(addrList) < 1 {
+		IP := "172.30.0.1/16"
 		addr, err := netlink.ParseAddr(IP)
 		if err != nil {
 			return err
@@ -23,6 +33,8 @@ func SetupBridge(name, IP string) error {
 			return err
 		}
 	}
+
+	// Setup the Bridge
 	if err := netlink.LinkSetUp(bridge); err != nil {
 		return err
 	}
@@ -39,20 +51,25 @@ func SetupVirtualEthernet(name, peer, master string) error {
 	if err := netlink.LinkAdd(vth); err != nil {
 		return err
 	}
-	if err := netlink.LinkSetUp(vth); err != nil {
-		return err
-	}
-	masterLink, err := netlink.LinkByName(master)
+	return netlink.LinkSetUp(vth)
+}
+
+func LinkSetMaster(linkName, masterName string) error {
+	link, err := netlink.LinkByName(linkName)
 	if err != nil {
-		return errors.Wrapf(err, "can't find link %s", master)
+		return errors.Wrapf(err, "can't find link %s", linkName)
 	}
-	if err := netlink.LinkSetMaster(vth, masterLink); err != nil {
+	masterLink, err := netlink.LinkByName(masterName)
+	if err != nil {
+		return errors.Wrapf(err, "can't find link %s", masterName)
+	}
+	if err := netlink.LinkSetMaster(link, masterLink); err != nil {
 		return err
 	}
 	return nil
 }
 
-func LinkAddGateway(linkName, gateway string) error {
+func LinkAddGateway(linkName, gatewayIP string) error {
 	link, err := netlink.LinkByName(linkName)
 	if err != nil {
 		return err
@@ -61,7 +78,7 @@ func LinkAddGateway(linkName, gateway string) error {
 	newRoute := &netlink.Route{
 		LinkIndex: link.Attrs().Index,
 		Scope:     netlink.SCOPE_UNIVERSE,
-		Gw:        net.ParseIP(gateway),
+		Gw:        net.ParseIP(gatewayIP),
 	}
 	return netlink.RouteAdd(newRoute)
 }
@@ -84,4 +101,26 @@ func LinkSetup(linkName string) error {
 		return err
 	}
 	return netlink.LinkSetUp(link)
+}
+
+func LinkRename(old, new string) error {
+	link, err := netlink.LinkByName(old)
+	if err != nil {
+		return err
+	}
+	return netlink.LinkSetName(link, new)
+}
+
+
+func IPExists(ip net.IP) (bool, error) {
+	linkList, err := netlink.AddrList(nil, 0)
+	if err != nil {
+		return false, err
+	}
+	for _, link := range linkList {
+		if link.IP.Equal(ip) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
