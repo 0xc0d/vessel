@@ -48,18 +48,18 @@ func MountNewNetworkNamespace(nsTarget string) (filesystem.Unmounter, error) {
 }
 
 func SetNetNSByFile(filename string) (Unsetter, error) {
+	currentNS, err := os.OpenFile("/proc/self/ns/net", os.O_RDONLY, 0)
 	unsetFunc := func() error {
-		file, err := os.OpenFile("/proc/self/ns/net", os.O_RDONLY, 0)
+		defer currentNS.Close()
 		if err != nil {
 			return err
 		}
-		defer file.Close()
-		return unix.Setns(int(file.Fd()), syscall.CLONE_NEWNET)
+		return unix.Setns(int(currentNS.Fd()), syscall.CLONE_NEWNET)
 	}
 
 	netnsFile, err := os.OpenFile(filename, syscall.O_RDONLY, 0)
 	if err != nil {
-		return unsetFunc, errors.Wrap(err, "unable to open netns file")
+		return unsetFunc, errors.Wrap(err, "unable to open network namespace file")
 	}
 	defer netnsFile.Close()
 	if err := unix.Setns(int(netnsFile.Fd()), syscall.CLONE_NEWNET); err != nil {
