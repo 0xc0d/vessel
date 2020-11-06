@@ -41,7 +41,7 @@ func SetupBridge(name string) error {
 	return nil
 }
 
-func SetupVirtualEthernet(name, peer, master string) error {
+func SetupVirtualEthernet(name, peer string) error {
 	linkAttrs := netlink.NewLinkAttrs()
 	linkAttrs.Name = name
 	vth := &netlink.Veth{

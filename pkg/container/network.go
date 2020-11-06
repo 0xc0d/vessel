@@ -16,7 +16,7 @@ func (c *Container) SetupNetwork(bridge string) (filesystem.Unmounter, error) {
 	peerName := fmt.Sprintf("P%s", vethName)
 	masterName := "vessel0"
 
-	if err := network.SetupVirtualEthernet(vethName, peerName, bridge); err != nil {
+	if err := network.SetupVirtualEthernet(vethName, peerName); err != nil {
 		return nil, err
 	}
 	if err := network.LinkSetMaster(vethName, masterName); err != nil {
@@ -26,7 +26,7 @@ func (c *Container) SetupNetwork(bridge string) (filesystem.Unmounter, error) {
 	if err != nil {
 		return unmount, err
 	}
-	if err := network.LinkSetNsFile(nsMountTarget, peerName); err != nil {
+	if err := network.LinkSetNsByFile(nsMountTarget, peerName); err != nil {
 		return unmount, err
 	}
 

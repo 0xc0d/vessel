@@ -35,11 +35,11 @@ func Fork(ctr *container.Container, args []string, detach bool) error {
 		{Source: "proc", Target: "proc", Type: "proc"},
 		{Source: "sysfs", Target: "sys", Type: "sysfs"},
 	}
-	unmounter, err := filesystem.Mount(mountPoints...)
+	unmount, err := filesystem.Mount(mountPoints...)
 	if err != nil {
 		return err
 	}
-	defer unmounter()
+	defer unmount()
 
 	command, argv := cmdAndArgs(ctr.Config.Cmd)
 	if len(args) > 0 {
@@ -50,15 +50,6 @@ func Fork(ctr *container.Container, args []string, detach bool) error {
 	newCmd.Stdout = os.Stdout
 	newCmd.Stderr = os.Stderr
 	newCmd.Env = ctr.Config.Env
-	//newCmd.SysProcAttr = &syscall.SysProcAttr{
-	//	Cloneflags: syscall.CLONE_NEWUSER,
-	//	UidMappings: []syscall.SysProcIDMap{
-	//		{ContainerID: 0, HostID: os.Getuid(), Size: 1},
-	//	},
-	//	GidMappings: []syscall.SysProcIDMap{
-	//		{ContainerID: 0, HostID: os.Getgid(), Size: 1},
-	//	},
-	//}
 	return runCommand(newCmd, detach)
 }
 

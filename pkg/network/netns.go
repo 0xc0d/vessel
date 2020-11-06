@@ -68,7 +68,7 @@ func SetNetNSByFile(filename string) (Unsetter, error) {
 	return unsetFunc, err
 }
 
-func LinkSetNsFile(filename, linkName string) error {
+func LinkSetNsByFile(filename, linkName string) error {
 	netnsFile, err := os.OpenFile(filename, syscall.O_RDONLY, 0)
 	if err != nil {
 		return errors.Wrap(err, "unable to open netns file")
