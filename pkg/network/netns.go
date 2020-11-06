@@ -12,14 +12,13 @@ import (
 type Unsetter func() error
 
 func MountNewNetworkNamespace(nsTarget string) (filesystem.Unmounter, error) {
-	file, err := os.OpenFile(nsTarget, syscall.O_RDONLY|syscall.O_CREAT|syscall.O_EXCL, 0644)
+	_, err := os.OpenFile(nsTarget, syscall.O_RDONLY|syscall.O_CREAT|syscall.O_EXCL, 0644)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create target file")
 	}
-	file.Close()
 
 	// store current network namespace
-	file, err = os.OpenFile("/proc/self/ns/net", os.O_RDONLY, 0)
+	file, err := os.OpenFile("/proc/self/ns/net", os.O_RDONLY, 0)
 	if err != nil {
 		return nil, err
 	}
