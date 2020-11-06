@@ -51,7 +51,7 @@ func (i *Image) addToRepositories() error {
 	decoder.Decode(&repos)
 
 	// truncate file to overwrite
-	if file.Truncate(0) != nil {
+	if _, err := file.Seek(0, 0); err != nil {
 		return err
 	}
 

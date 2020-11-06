@@ -11,7 +11,6 @@ import (
 )
 
 const (
-	ImgDir   = "/var/lib/vessel/images"
 	RepoFile = "/var/lib/vessel/images/repositories.json"
 	LyrDir   = "/var/lib/vessel/images/layers"
 )
