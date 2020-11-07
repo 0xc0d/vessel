@@ -1,7 +1,7 @@
 # vessel
 A tiny educational-purpose project to create containers, written in Go.
 
-It basically is a tiny version of docker, it uses neither [containerd](https://containerd.io/) nor [runc](https://github.com/opencontainers/runc).
+It basically is a tiny version of docker, it uses neither [containerd](https://containerd.io/) nor [runc](https://github.com/opencontainers/runc). Only a set of the Linux features.
 
 ## Features
 Vessel supports:
