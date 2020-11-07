@@ -3,11 +3,17 @@ A tiny education-purpose project to create containers, written in Go.
 
 It basically is a tiny version of docker, it uses neither [containerd](https://containerd.io/) nor [runc](https://github.com/opencontainers/runc).
 
-# Features
+## Features
 Vessel supports:
 * __Control Groups__ for resource restriction (CPU, Memory, Swap, PIDs)
 * __Namespace__ for global system resources isolation (Mount, UTS, Network, IPS, PID)
 * __Union File System__ for branches to be overlaid in a single coherent file system. (OverlayFS)
+
+## Read more
+Here is the list of blog posts I've written about vessel:
+
+1. [Build Containers From Scratch in Go (Part 1: Namespaces)](https://alijosie.medium.com/build-containers-from-scratch-in-go-part-1-namespaces-c07d2291038b)
+2. To be continued...
 
 ## Install
 
@@ -27,19 +33,22 @@ Vessel supports:
 
 ## Examples
 
-> Run `/bin/sh` in `alpine:latest`
+Run `/bin/sh` in `alpine:latest`
 
     vessel run alpine /bin/sh
     vessel run alpine # same as above due to alpine default command
 
-> Restart Nginx service inside a container with ID: 123456789123
+Restart Nginx service inside a container with ID: 123456789123
 
     vessel exec 1234567879123 systemctrl restart nginx
     
-> List running containers
+List running containers
 
     vessel ps
     
-> List local images
+List local images
 
     vessel images
+
+## Notice
+vessel, obviously, is not a production ready container manager tool. 
