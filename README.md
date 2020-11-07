@@ -1,5 +1,5 @@
 # vessel
-A tiny education-purpose project to create containers, written in Go.
+A tiny educational-purpose project to create containers, written in Go.
 
 It basically is a tiny version of docker, it uses neither [containerd](https://containerd.io/) nor [runc](https://github.com/opencontainers/runc).
 
