@@ -70,12 +70,12 @@ func runCommand(cmd *exec.Cmd, detach bool) error {
 	if err := cmd.Start(); err != nil {
 		return err
 	}
-	if !detach {
-		if err := cmd.Wait(); err != nil {
-			return err
-		}
+	if detach {
+		cmd.Process.Release()
+		return nil
 	}
-	return nil
+	
+	return cmd.Wait()
 }
 
 // cmdAndArgs separate command (args[0]) and its argv.
