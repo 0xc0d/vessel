@@ -71,8 +71,7 @@ func runCommand(cmd *exec.Cmd, detach bool) error {
 		return err
 	}
 	if detach {
-		cmd.Process.Release()
-		return nil
+		return cmd.Process.Release()
 	}
 	
 	return cmd.Wait()
