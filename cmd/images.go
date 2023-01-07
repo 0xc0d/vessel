@@ -13,7 +13,6 @@ func NewImagesCommand() *cobra.Command {
 		DisableFlagsInUseLine: true,
 		SilenceUsage:          true,
 		Args:                  cobra.NoArgs,
-		PreRunE:               isRoot,
 		RunE:                  internal.Images,
 	}
 

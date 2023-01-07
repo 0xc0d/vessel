@@ -13,7 +13,6 @@ func NewRunCommand() *cobra.Command {
 		DisableFlagsInUseLine: true,
 		SilenceUsage:          true,
 		Args:                  cobra.MinimumNArgs(1),
-		PreRunE:               isRoot,
 		RunE:                  internal.Run,
 	}
 

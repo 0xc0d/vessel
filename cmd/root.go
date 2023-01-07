@@ -2,8 +2,9 @@ package cmd
 
 import (
 	"errors"
-	"github.com/spf13/cobra"
 	"os"
+
+	"github.com/spf13/cobra"
 )
 
 const (
@@ -28,6 +29,7 @@ func NewVesselCommand() *cobra.Command {
 		Short:                 "A tiny tool for managing containers",
 		TraverseChildren:      true,
 		DisableFlagsInUseLine: true,
+		PersistentPreRunE:     isRoot,
 	}
 
 	return cmd

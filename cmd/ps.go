@@ -13,7 +13,6 @@ func NewPsCommand() *cobra.Command {
 		DisableFlagsInUseLine: true,
 		SilenceUsage:          true,
 		Args:                  cobra.NoArgs,
-		PreRunE:               isRoot,
 		RunE:                  internal.Ps,
 	}
 

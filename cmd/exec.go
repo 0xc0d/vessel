@@ -14,7 +14,6 @@ func NewExecCommand() *cobra.Command {
 		DisableFlagsInUseLine: true,
 		SilenceUsage:          true,
 		Args:                  cobra.MinimumNArgs(2),
-		PreRunE:               isRoot,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return internal.Exec(args[0], args[1:], detach)
 		},
